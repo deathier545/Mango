@@ -15,13 +15,13 @@ export function useKeyboardShortcuts(
   onCommandPalette?: () => void,
   onMangoView?: () => void,
   onSaveSettings?: () => void,
-  settingsOpen?: boolean,
+  settingsDirty?: boolean,
   onOpenSettings?: () => void,
 ) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        if ((e.key === 's' || e.key === 'S') && settingsOpen && onSaveSettings) {
+        if ((e.key === 's' || e.key === 'S') && settingsDirty && onSaveSettings) {
           e.preventDefault()
           onSaveSettings()
           return
@@ -51,5 +51,5 @@ export function useKeyboardShortcuts(
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onView, onSendChat, activeView, onCommandPalette, onMangoView, onSaveSettings, settingsOpen, onOpenSettings])
+  }, [onView, onSendChat, activeView, onCommandPalette, onMangoView, onSaveSettings, settingsDirty, onOpenSettings])
 }

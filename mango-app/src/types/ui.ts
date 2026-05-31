@@ -8,6 +8,7 @@ export type MangoSettings = {
   wakeEnabled: boolean
   strictTools: boolean
   powershellConfirmation: boolean
+  safeMode: boolean
   groqModel: string
   edgeVoice: string
   edgeRate: string
@@ -20,7 +21,7 @@ export type MangoSettings = {
 
 export type AppView = 'mango' | 'chat' | 'smart' | 'diagnostics'
 
-export type DiagSubView = 'voice' | 'metrics'
+export type DiagSubView = 'voice' | 'metrics' | 'system'
 
 export type MemoryCard = {
   id: string

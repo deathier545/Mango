@@ -11,6 +11,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from mango.desktop_events import emit_desktop_event
+
 logger = logging.getLogger(__name__)
 
 _CORRELATION_ID: contextvars.ContextVar[str] = contextvars.ContextVar(
@@ -48,6 +50,7 @@ def emit_metric(event: str, **fields: Any) -> None:
         **fields,
     }
     logger.info("metric %s", payload)
+    emit_desktop_event({"type": "metric", **payload})
     path = metrics_jsonl_path()
     if not path:
         return

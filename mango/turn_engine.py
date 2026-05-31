@@ -16,6 +16,7 @@ from mango.config import Config
 from mango.conversation import trim_conversation
 from mango.integrations.spotify.spotify_volume_duck import duck_spotify_session
 from mango.metrics import clear_correlation_id, emit_metric, start_turn_correlation
+from mango.desktop_events import emit_desktop_event
 from mango.tool_narration import set_narration_interrupt_check
 from mango.tool_recovery import strip_pseudo_tool_markup_for_speech
 from mango.transcript_postprocess import normalize_transcript_text
@@ -130,6 +131,7 @@ def run_turn(
                 )
                 return TurnOutcome()
             logger.info("You said (%s): %s", source, user_text)
+            emit_desktop_event({"type": "transcript", "text": user_text, "source": source})
             if source == "vad" and cfg.always_listen and cfg.always_listen_require_transcript_prefix:
                 prefs = cfg.always_listen_transcript_prefixes
                 if not transcript_starts_with_any_prefix(user_text, prefs):
@@ -164,6 +166,7 @@ def run_turn(
                 time.perf_counter() - t_llm,
                 reply,
             )
+            emit_desktop_event({"type": "reply", "text": reply})
             emit_metric(
                 "turn_llm_done",
                 source=source,

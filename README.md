@@ -10,6 +10,14 @@ Push-to-talk voice assistant using local speech-to-text (Whisper), Groq or Ollam
 
 ## Quick start (recommended)
 
+**Desktop UI (Electron + voice):**
+
+```powershell
+.\scripts\start-mango-full.ps1
+```
+
+**First-time setup:**
+
 ```powershell
 .\scripts\setup-env.ps1          # create .env if missing
 # Edit .env: set GROQ_API_KEY, review docs\recommended.env
@@ -17,11 +25,13 @@ python -m mango --doctor         # config, mic, Groq model check
 .\scripts\healthcheck.ps1        # doctor + pytest
 ```
 
-**Desktop UI:** `.\run-desktop.ps1` or `.\scripts\create-mango-desktop-shortcut.ps1`
+Install Python deps with either `pip install -r requirements.txt` or `pip install ".[full]"` from the repo root.
 
 **Memory:** default `MANGO_MEMORY_TIER=session` (no disk history). See [docs/memory-tiers.md](docs/memory-tiers.md).
 
 **Trim tools:** `MANGO_DISABLED_TOOLS=discord_voice,xbox_console,...` in `.env` hides integrations you do not use. PowerShell confirmation stays on by default.
+
+**Safe mode (debugging):** set `MANGO_SAFE_MODE=1` or enable **Safe mode** in Electron settings to force push-to-talk only, disable wake/always-listen, and skip Discord bridge + nonessential tools.
 
 ## Setup
 
@@ -39,23 +49,21 @@ pip install -r requirements-dev.txt
 
 **Privacy:** opt-in features store plaintext on disk under `%USERPROFILE%\.mango\` when enabled (see `.env.example`).
 
-3. Run:
+3. Run (advanced / headless):
 
 ```powershell
-python -m mango.main
+python -m mango              # voice loop (push-to-talk)
+python -m mango --doctor     # diagnostics only
+python -m mango --ptt-only   # disable wake / always-listen for this run
 ```
 
-Or the **desktop shell** (Electron UI + voice in a child process):
+The desktop shell starts Mango in a child process automatically — you usually do not need `python -m mango --desktop` directly.
 
-```powershell
-python -m mango --desktop
-```
-
-Or: `.\scripts\start-mango-full.ps1` / `.\scripts\run-mango-desktop.ps1`
+Alternate desktop paths: `.\run-desktop.ps1`, `.\scripts\run-mango-desktop.ps1`, or `cd mango-app && npm run dev`.
 
 ## Desktop UI (`mango-app`)
 
-Node.js 18+ required.
+Node.js 18+ required. **Recommended entrypoint:**
 
 ```powershell
 .\scripts\start-mango-full.ps1

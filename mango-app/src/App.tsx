@@ -12,6 +12,7 @@ import { DiagnosticsPanel } from './components/DiagnosticsPanel'
 import { SmartPanel } from './components/SmartPanel'
 import { CommandPalette } from './components/CommandPalette'
 import { SettingsPanel } from './components/SettingsPanel'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import type { SmartAction } from './lib/smartActions'
 import { useToast } from './context/ToastContext'
 import { useOrbCanvas } from './hooks/useOrbCanvas'
@@ -19,6 +20,7 @@ import { useMapView } from './hooks/useMapView'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDiscordBridgeStatus } from './hooks/useDiscordBridgeStatus'
 import { usePageVisible } from './hooks/usePageVisible'
+import { useDuoChat } from './hooks/useDuoChat'
 import { useMangoBridge } from './hooks/useMangoBridge'
 import type { AppView, DiagSubView, OrbState } from './types/ui'
 
@@ -59,37 +61,77 @@ function App() {
   const globeHandlers = useMemo(() => ({ onGlobeOpen }), [onGlobeOpen])
 
   const mango = useMangoBridge(notify, globeHandlers)
+  const duo = useDuoChat(notify)
+
+  const {
+    status,
+    settings,
+    setSettings,
+    savedSettings,
+    settingsDirty,
+    assistantState,
+    setAssistantState,
+    transcript,
+    reply,
+    globeVisible,
+    setGlobeVisible,
+    globeUrl,
+    globeLabel,
+    mapTarget,
+    logs,
+    conversationTimeline,
+    chatTimeline,
+    setChatTimeline,
+    turnMetrics,
+    toolEvents,
+    usageSamples,
+    lastErrorAt,
+    startPending,
+    startProgress,
+    chatSeqRef,
+    pendingChatRequestRef,
+    statusRunningRef,
+    audioLevelRef,
+    startMango,
+    stopMango,
+    restartMango,
+    saveSettings,
+    openLogsFolder,
+    copyDiagnostics,
+    exportUsageJson: saveUsageJson,
+    exportUsageCsv: saveUsageCsv,
+  } = mango
 
   const startedLabel = useMemo(() => {
-    if (!mango.status.startedAt) return 'Not started'
-    return `Started ${new Date(mango.status.startedAt).toLocaleTimeString()}`
-  }, [mango.status.startedAt])
+    if (!status.startedAt) return 'Not started'
+    return `Started ${new Date(status.startedAt).toLocaleTimeString()}`
+  }, [status.startedAt])
 
   const orbState = useMemo((): OrbState => {
-    if (mango.lastErrorAt) return 'error'
+    if (lastErrorAt) return 'error'
     if (
-      mango.assistantState === 'idle' ||
-      mango.assistantState === 'listening' ||
-      mango.assistantState === 'thinking' ||
-      mango.assistantState === 'speaking' ||
-      mango.assistantState === 'awaiting' ||
-      mango.assistantState === 'stopped'
+      assistantState === 'idle' ||
+      assistantState === 'listening' ||
+      assistantState === 'thinking' ||
+      assistantState === 'speaking' ||
+      assistantState === 'awaiting' ||
+      assistantState === 'stopped'
     ) {
-      return mango.assistantState
+      return assistantState
     }
-    return mango.status.running ? 'listening' : 'idle'
-  }, [mango.assistantState, mango.status.running, mango.lastErrorAt])
+    return status.running ? 'listening' : 'idle'
+  }, [assistantState, status.running, lastErrorAt])
 
   orbStateRef.current = orbState
 
-  const orbEnabled = activeView === 'mango' && pageVisible
-  useOrbCanvas(orbEnabled, orbState, orbWrapRef, orbCanvasRef, mango.audioLevelRef, orbStateRef)
+  const orbEnabled = activeView === 'mango' && pageVisible && !duo.duoMode
+  useOrbCanvas(orbEnabled, orbState, orbWrapRef, orbCanvasRef, audioLevelRef, orbStateRef)
 
   const onMapNotice = useCallback((msg: string) => notify(msg, 'info'), [notify])
   useMapView({
-    active: activeView === 'mango' && mango.globeVisible,
-    globeVisible: mango.globeVisible,
-    mapTarget: mango.mapTarget,
+    active: activeView === 'mango' && globeVisible,
+    globeVisible,
+    mapTarget,
     mapHostRef,
     mapRef,
     mapTileLayerRef,
@@ -106,7 +148,7 @@ function App() {
     window.requestAnimationFrame(() => {
       host.scrollTop = host.scrollHeight
     })
-  }, [activeView, mango.chatTimeline.length, manualSending, chatAtBottom])
+  }, [activeView, chatTimeline.length, manualSending, chatAtBottom])
 
   const handleChatFeedScroll = useCallback((el: HTMLDivElement) => {
     const distance = el.scrollHeight - el.scrollTop - el.clientHeight
@@ -114,7 +156,7 @@ function App() {
   }, [])
 
   const usageTotals = useMemo(() => {
-    const totals = mango.usageSamples.reduce(
+    const totals = usageSamples.reduce(
       (acc, s) => {
         acc.prompt += s.promptTokens
         acc.completion += s.completionTokens
@@ -124,36 +166,36 @@ function App() {
       { prompt: 0, completion: 0, total: 0 },
     )
     const estCost =
-      (totals.prompt / 1000) * mango.settings.promptTokenRatePer1k +
-      (totals.completion / 1000) * mango.settings.completionTokenRatePer1k
+      (totals.prompt / 1000) * settings.promptTokenRatePer1k +
+      (totals.completion / 1000) * settings.completionTokenRatePer1k
     return { ...totals, estCost }
-  }, [mango.usageSamples, mango.settings.promptTokenRatePer1k, mango.settings.completionTokenRatePer1k])
+  }, [usageSamples, settings.promptTokenRatePer1k, settings.completionTokenRatePer1k])
 
   const sortedChatTimeline = useMemo(
-    () => [...mango.chatTimeline].sort((a, b) => a.seq - b.seq),
-    [mango.chatTimeline],
+    () => [...chatTimeline].sort((a, b) => a.seq - b.seq),
+    [chatTimeline],
   )
 
   const mapFallbackUrl =
-    mango.globeUrl ||
-    `https://www.openstreetmap.org/#map/${Math.max(2, Math.min(19, Math.round(mango.mapTarget.zoom)))}/${mango.mapTarget.lat}/${mango.mapTarget.lng}`
+    globeUrl ||
+    `https://www.openstreetmap.org/#map/${Math.max(2, Math.min(19, Math.round(mapTarget.zoom)))}/${mapTarget.lat}/${mapTarget.lng}`
 
   async function exportUsageJson() {
-    await mango.exportUsageJson({
+    await saveUsageJson({
       exportedAt: new Date().toISOString(),
-      status: mango.status,
-      settings: mango.settings,
+      status,
+      settings,
       usageTotals,
-      usageSamples: mango.usageSamples,
-      toolEvents: mango.toolEvents,
-      chatTimeline: mango.chatTimeline,
-      conversationTimeline: mango.conversationTimeline,
+      usageSamples,
+      toolEvents,
+      chatTimeline,
+      conversationTimeline,
     })
   }
 
   async function exportUsageCsv() {
     const header = 'timestamp,prompt_tokens,completion_tokens,total_tokens,total_time_s,queue_time_s\n'
-    const rows = mango.usageSamples
+    const rows = usageSamples
       .map((u) =>
         [
           new Date(u.ts).toISOString(),
@@ -165,7 +207,7 @@ function App() {
         ].join(','),
       )
       .join('\n')
-    await mango.exportUsageCsv(header + rows + '\n')
+    await saveUsageCsv(header + rows + '\n')
   }
 
   const sendManualMessage = useCallback(
@@ -177,23 +219,23 @@ function App() {
         return
       }
       const now = Date.now()
-      const priorHistory = mango.chatTimeline
+      const priorHistory = chatTimeline
         .filter((item) => !item.pending)
         .slice(-20)
         .map((item) => ({ role: item.role, text: item.text }))
       const submitHistory = [...priorHistory, { role: 'user' as const, text }]
       const requestId = `chat-${now}`
-      mango.pendingChatRequestRef.current = requestId
-      mango.chatSeqRef.current += 1
-      const userSeq = mango.chatSeqRef.current
+      pendingChatRequestRef.current = requestId
+      chatSeqRef.current += 1
+      const userSeq = chatSeqRef.current
       if (!textOverride) setChatInput('')
-      mango.setChatTimeline((prev) => [
+      setChatTimeline((prev) => [
         ...prev.slice(-49),
         { id: `${requestId}-user`, seq: userSeq, ts: now, role: 'user', text },
       ])
-      mango.chatSeqRef.current += 1
-      const pendingSeq = mango.chatSeqRef.current
-      mango.setChatTimeline((prev) => [
+      chatSeqRef.current += 1
+      const pendingSeq = chatSeqRef.current
+      setChatTimeline((prev) => [
         ...prev.slice(-49),
         {
           id: `${requestId}-pending`,
@@ -205,15 +247,15 @@ function App() {
         },
       ])
       setManualSending(true)
-      mango.setAssistantState('thinking')
+      setAssistantState('thinking')
       try {
         const res = await window.mango.sendText(text, submitHistory)
-        if (mango.pendingChatRequestRef.current !== requestId) return
+        if (pendingChatRequestRef.current !== requestId) return
         if (!res.ok) {
           throw new Error(res.error || 'No response from manual text bridge.')
         }
         const replyText = String(res.reply || '').trim() || 'Done.'
-        mango.setChatTimeline((prev) => {
+        setChatTimeline((prev) => {
           const withoutPending = prev.filter((item) => item.id !== `${requestId}-pending`)
           return [
             ...withoutPending.slice(-49),
@@ -226,10 +268,10 @@ function App() {
             },
           ]
         })
-        mango.setAssistantState(mango.statusRunningRef.current ? 'listening' : 'idle')
+        setAssistantState(statusRunningRef.current ? 'listening' : 'idle')
       } catch (err) {
-        if (mango.pendingChatRequestRef.current === requestId) {
-          mango.setChatTimeline((prev) => {
+        if (pendingChatRequestRef.current === requestId) {
+          setChatTimeline((prev) => {
             const withoutPending = prev.filter((item) => item.id !== `${requestId}-pending`)
             return [
               ...withoutPending.slice(-49),
@@ -244,15 +286,15 @@ function App() {
           })
           notify(`Manual message failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
         }
-        mango.setAssistantState(mango.statusRunningRef.current ? 'listening' : 'idle')
+        setAssistantState(statusRunningRef.current ? 'listening' : 'idle')
       } finally {
-        if (mango.pendingChatRequestRef.current === requestId) {
-          mango.pendingChatRequestRef.current = null
+        if (pendingChatRequestRef.current === requestId) {
+          pendingChatRequestRef.current = null
         }
         setManualSending(false)
       }
     },
-    [chatInput, manualSending, mango, notify],
+    [chatInput, chatTimeline, manualSending, setChatTimeline, setAssistantState, notify],
   )
 
   const sendSmartPrompt = useCallback(
@@ -291,25 +333,43 @@ function App() {
   )
 
   const clearConversation = useCallback(() => {
-    mango.setChatTimeline([])
-    mango.pendingChatRequestRef.current = null
+    setChatTimeline([])
+    pendingChatRequestRef.current = null
     notify('Chat cleared.', 'info')
-  }, [mango, notify])
+  }, [setChatTimeline, notify])
+
+  const [confirmDiscardSettings, setConfirmDiscardSettings] = useState(false)
 
   const openSettings = useCallback(() => setSettingsOpen(true), [])
-  const closeSettings = useCallback(() => setSettingsOpen(false), [])
+
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false)
+    setConfirmDiscardSettings(false)
+  }, [])
+
+  const requestCloseSettings = useCallback(() => {
+    if (settingsDirty) {
+      setConfirmDiscardSettings(true)
+      return
+    }
+    closeSettings()
+  }, [settingsDirty, closeSettings])
+
+  const discardSettings = useCallback(() => {
+    setSettings(savedSettings)
+  }, [savedSettings, setSettings])
 
   useEffect(() => {
     if (!settingsOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !confirmDiscardSettings) {
         e.preventDefault()
-        closeSettings()
+        requestCloseSettings()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [settingsOpen, closeSettings])
+  }, [settingsOpen, requestCloseSettings, confirmDiscardSettings])
 
   useKeyboardShortcuts(
     setActiveView,
@@ -317,29 +377,29 @@ function App() {
     activeView,
     () => setCommandPaletteOpen((open) => !open),
     () => {
-      mango.setGlobeVisible(false)
+      setGlobeVisible(false)
       setActiveView('mango')
     },
-    () => void mango.saveSettings(),
-    settingsOpen,
+    () => void saveSettings(),
+    settingsDirty,
     openSettings,
   )
 
   return (
     <div className={`app state-${orbState}${commandPaletteOpen || settingsOpen ? ' modalOpen' : ''}`}>
       <TopBar
-        status={mango.status}
+        status={status}
         orbState={orbState}
         startedLabel={startedLabel}
         discord={discord}
-        startPending={mango.startPending}
-        onStart={() => void mango.startMango()}
-        onStop={() => void mango.stopMango()}
-        onRestart={() => void mango.restartMango()}
+        startPending={startPending}
+        onStart={() => void startMango()}
+        onStop={() => void stopMango()}
+        onRestart={() => void restartMango()}
         onOpenSettings={openSettings}
       />
 
-      {mango.status.running && !discord.reachable ? (
+      {status.running && !discord.reachable ? (
         <p className="bridgeBanner" role="status">
           Discord voice bridge is offline — run{' '}
           <code>scripts/start-mango-discord.ps1</code> for call music and ducking.
@@ -352,27 +412,42 @@ function App() {
         <div className={`viewPane ${activeView === 'mango' ? 'viewActive' : ''}`} aria-hidden={activeView !== 'mango'}>
           <MangoHud
             orbState={orbState}
-            running={mango.status.running}
-            transcript={mango.transcript}
-            reply={mango.reply}
-            globeVisible={mango.globeVisible}
-            globeLabel={mango.globeLabel}
-            hasGlobeUrl={Boolean(mango.globeUrl)}
+            running={status.running}
+            transcript={transcript}
+            reply={reply}
+            globeVisible={globeVisible}
+            globeLabel={globeLabel}
+            hasGlobeUrl={Boolean(globeUrl)}
             orbWrapRef={orbWrapRef}
             orbCanvasRef={orbCanvasRef}
             mapHostRef={mapHostRef}
-            onBackFromMap={() => mango.setGlobeVisible(false)}
+            onBackFromMap={() => setGlobeVisible(false)}
             onOpenExternal={() => window.open(mapFallbackUrl, '_blank', 'noopener,noreferrer')}
             onResumeMap={() => {
-              mango.setGlobeVisible(true)
+              setGlobeVisible(true)
               setActiveView('mango')
             }}
-            onStart={() => void mango.startMango()}
-            startPending={mango.startPending}
-            startProgress={mango.startProgress}
-            turnMetrics={mango.turnMetrics}
-            latestToolEvent={mango.toolEvents[mango.toolEvents.length - 1] ?? null}
+            onStart={() => void startMango()}
+            startPending={startPending}
+            startProgress={startProgress}
+            turnMetrics={turnMetrics}
+            latestToolEvent={toolEvents[toolEvents.length - 1] ?? null}
             onQuickPrompt={setPromptDraft}
+            duoMode={duo.duoMode}
+            onEnterDuo={duo.enterDuoMode}
+            duoEnabled={activeView === 'mango' && pageVisible}
+            mangoDuoState={duo.mangoDuoState}
+            amberDuoState={duo.amberDuoState}
+            duoTopic={duo.duoTopic}
+            duoRounds={duo.duoRounds}
+            duoRunning={duo.duoRunning}
+            duoLines={duo.duoLines}
+            onDuoTopicChange={duo.setDuoTopic}
+            onDuoRoundsChange={duo.setDuoRounds}
+            onStartDuo={() => void duo.startDuo()}
+            onExitDuo={duo.exitDuoMode}
+            mangoDuoAudioRef={duo.mangoAudioRef}
+            amberDuoAudioRef={duo.amberAudioRef}
           />
         </div>
 
@@ -398,13 +473,13 @@ function App() {
           <DiagnosticsPanel
             subView={diagSubView}
             onSubView={setDiagSubView}
-            transcript={mango.transcript}
-            reply={mango.reply}
-            timeline={mango.conversationTimeline}
-            logs={mango.logs}
-            turnMetrics={mango.turnMetrics}
-            toolEvents={mango.toolEvents}
-            usageSamples={mango.usageSamples}
+            transcript={transcript}
+            reply={reply}
+            timeline={conversationTimeline}
+            logs={logs}
+            turnMetrics={turnMetrics}
+            toolEvents={toolEvents}
+            usageSamples={usageSamples}
             usageTotals={usageTotals}
           />
         </div>
@@ -412,30 +487,53 @@ function App() {
         <div className={`viewPane viewPaneScroll ${activeView === 'smart' ? 'viewActive' : ''}`} aria-hidden={activeView !== 'smart'}>
           <SmartPanel onNotify={notify} onSendPrompt={sendSmartPrompt} />
         </div>
-
-        {settingsOpen ? (
-          <div className="settingsOverlay viewPane viewActive viewPaneScroll" role="dialog" aria-modal="true" aria-label="Settings">
-            <div className="settingsOverlayInner panel">
-              <header className="settingsOverlayHead">
-                <h2>Settings</h2>
-                <button type="button" className="ghostBtn" onClick={closeSettings} aria-label="Close settings">
-                  ✕
-                </button>
-              </header>
-              <SettingsPanel
-                settings={mango.settings}
-                savedSettings={mango.savedSettings}
-                onChange={mango.setSettings}
-                onSave={() => void mango.saveSettings()}
-                onOpenLogs={() => void mango.openLogsFolder()}
-                onCopyDiagnostics={() => void mango.copyDiagnostics()}
-                onExportJson={() => void exportUsageJson()}
-                onExportCsv={() => void exportUsageCsv()}
-              />
-            </div>
-          </div>
-        ) : null}
       </main>
+
+      {settingsOpen ? (
+        <div
+          className="settingsOverlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Settings"
+          onClick={requestCloseSettings}
+        >
+          <div className="settingsOverlayInner panel" onClick={(e) => e.stopPropagation()}>
+            <header className="settingsOverlayHead">
+              <div>
+                <h2>Settings</h2>
+                {settingsDirty ? <span className="unsavedBadge">Unsaved changes</span> : null}
+              </div>
+              <button type="button" className="ghostBtn" onClick={requestCloseSettings} aria-label="Close settings">
+                ✕
+              </button>
+            </header>
+            <SettingsPanel
+              settings={settings}
+              savedSettings={savedSettings}
+              onChange={setSettings}
+              onSave={() => void saveSettings()}
+              onOpenLogs={() => void openLogsFolder()}
+              onCopyDiagnostics={() => void copyDiagnostics()}
+              onExportJson={() => void exportUsageJson()}
+              onExportCsv={() => void exportUsageCsv()}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <ConfirmDialog
+        open={confirmDiscardSettings}
+        title="Discard changes?"
+        message="You have unsaved settings. Discard changes and close?"
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setConfirmDiscardSettings(false)
+          discardSettings()
+          closeSettings()
+        }}
+        onCancel={() => setConfirmDiscardSettings(false)}
+      />
 
       <CommandPalette
         open={commandPaletteOpen}
@@ -447,7 +545,7 @@ function App() {
         activeView={activeView}
         onView={setActiveView}
         onMangoTab={() => {
-          mango.setGlobeVisible(false)
+          setGlobeVisible(false)
           setActiveView('mango')
         }}
       />

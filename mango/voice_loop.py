@@ -46,25 +46,26 @@ from mango.audio import (
 )
 from mango.config import Config, apply_cli_wake_oww_test
 from mango.continuous_listen import ContinuousVoiceListener
-from mango.conversation import trim_conversation
 from mango.desktop.mango_hud import MangoHud
 from mango.integrations.spotify.spotify_volume_duck import duck_spotify_session
 from mango.interruption_policy import resolve_profile, should_trigger_barge_with_profile
 from mango.listen_chime import play_listen_chime
-from mango.llm import GroqLLM, OllamaLLM
 from mango.llm_tool_loop import _needs_immediate_confirmation_followup, speaking_reply
 from mango.logging_setup import setup_logging
-from mango.memory_store import load_persistent_messages, save_persistent_messages
+from mango.memory_store import save_persistent_messages
 from mango.metrics import emit_metric
 from mango.quiet_hours import in_quiet_hours, local_now
 from mango.reminder_watchdog import start_watchdog as start_reminder_watchdog
+from mango.runtime.session_builders import (
+    build_llm_runtime,
+    build_memory_runtime,
+    build_stt_runtime,
+    build_tts_runtime,
+)
 from mango.session_log import save_session_snapshot
 from mango.startup_intro import maybe_play_startup_intro
-from mango.stt import WhisperSTT
 from mango.tool_registry import ToolRegistry
-from mango.tts import make_tts
 from mango.turn_engine import TurnOutcome, run_turn
-from mango.voice_prompt import _build_system_prompt
 from mango.wake.wake_listener import WakeWordListener
 
 logger = logging.getLogger(__name__)
@@ -159,6 +160,9 @@ def run_voice_session(
     if wake_oww_cli:
         apply_cli_wake_oww_test(cfg, score_only=wake_oww_cli_score_only)
 
+    if cfg.safe_mode:
+        ptt_only = True
+
     if ptt_only:
         cfg.always_listen = False
         hk = _hotkey_label(cfg.hotkey)
@@ -172,80 +176,11 @@ def run_voice_session(
         logger.exception("Voice mixer init failed")
         raise
 
-    stt = WhisperSTT(
-        model_size=cfg.whisper_model,
-        vad_filter=cfg.whisper_vad_filter,
-        no_speech_threshold=cfg.whisper_no_speech_threshold,
-        log_prob_threshold=cfg.whisper_log_prob_threshold,
-        normalize_target_peak=cfg.audio_normalize_target_peak,
-        normalize_max_gain=cfg.audio_normalize_max_gain,
-    )
-    stt_wake: WhisperSTT | None = None
-    _wake_m = (cfg.wake_whisper_model or "").strip()
-    if cfg.wake_word_enabled and _wake_m and _wake_m != cfg.whisper_model:
-        stt_wake = WhisperSTT(
-            model_size=_wake_m,
-            vad_filter=cfg.whisper_vad_filter,
-            no_speech_threshold=cfg.whisper_no_speech_threshold,
-            log_prob_threshold=cfg.whisper_log_prob_threshold,
-            normalize_target_peak=cfg.audio_normalize_target_peak,
-            normalize_max_gain=cfg.audio_normalize_max_gain,
-        )
-        logger.info(
-            "Dedicated Whisper model for wake only: %s (main STT: %s).",
-            _wake_m,
-            cfg.whisper_model,
-        )
-    preload_whisper = os.getenv("MANGO_PRELOAD_WHISPER", "1").strip().lower()
-    if preload_whisper not in ("0", "false", "no", "off"):
-        if stt_wake is not None:
-            try:
-                stt_wake.warm_model()
-                logger.info("Wake Whisper preload finished before listener start.")
-            except Exception:
-                logger.exception("Wake Whisper preload failed")
-
-        def _preload_whisper() -> None:
-            try:
-                stt.warm_model()
-                logger.info("Background Whisper preload finished.")
-            except Exception:
-                logger.exception("Background Whisper preload failed")
-
-        threading.Thread(target=_preload_whisper, daemon=True).start()
-        logger.info("Whisper preload scheduled (MANGO_PRELOAD_WHISPER).")
-
-    tts = make_tts(cfg)
-    if cfg.llm_provider == "ollama":
-        llm: GroqLLM | OllamaLLM = OllamaLLM(
-            base_url=cfg.ollama_base_url,
-            model=cfg.ollama_model,
-            timeout_seconds=cfg.ollama_timeout_s,
-        )
-        logger.info(
-            "Using Ollama at %s model=%s",
-            cfg.ollama_base_url,
-            cfg.ollama_model,
-        )
-    else:
-        llm = GroqLLM(
-            api_key=cfg.groq_api_key,
-            model=cfg.groq_model,
-            timeout_seconds=cfg.groq_timeout_s,
-        )
+    stt, stt_wake = build_stt_runtime(cfg)
+    tts = build_tts_runtime(cfg)
+    llm = build_llm_runtime(cfg)
     registry = ToolRegistry(cfg)
-
-    system_prompt = _build_system_prompt(cfg)
-    messages: list[dict] = [{"role": "system", "content": system_prompt}]
-    if cfg.persistent_memory:
-        prior = load_persistent_messages(
-            cfg.memory_dir,
-            max_messages=cfg.max_conversation_messages,
-            merge_days=cfg.memory_merge_days,
-        )
-        if prior:
-            messages.extend(prior)
-        trim_conversation(messages, cfg.max_conversation_messages)
+    messages, system_prompt = build_memory_runtime(cfg)
 
     def _persist_memory() -> None:
         if not cfg.persistent_memory:
@@ -307,7 +242,10 @@ def run_voice_session(
     wake_thread: threading.Thread | None = None
     stop_vad = threading.Event()
     stop_reminders = threading.Event()
-    start_reminder_watchdog(stop_reminders)
+    if cfg.safe_mode:
+        logger.info("Safe mode: reminder watchdog disabled.")
+    else:
+        start_reminder_watchdog(stop_reminders)
     vad_thread: threading.Thread | None = None
     vad_queue: queue.Queue = queue.Queue(maxsize=2)
     # While set, WakeWordListener skips mic sampling (avoids Whisper on TTS bleed / parallel STT noise).
@@ -811,6 +749,8 @@ def run_voice_session(
 
 def main() -> None:
     ptt_only = "--ptt-only" in sys.argv
+    if os.getenv("MANGO_PTT_ONLY", "").strip().lower() in ("1", "true", "yes", "on"):
+        ptt_only = True
     wake_oww_only = "--wake-oww-only" in sys.argv
     wake_oww_score_only = "--wake-oww-score-only" in sys.argv
     if ptt_only:

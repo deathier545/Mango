@@ -44,6 +44,12 @@ export type ParsedEvent =
       noiseFloor: number | null
       recommendation: string
     }
+  | {
+      kind: 'duo_phase'
+      speaker: string
+      phase: string
+      text: string
+    }
 
 export type MangoEvent =
   | { type: 'log'; payload: { ts: number; kind: string; line: string } }

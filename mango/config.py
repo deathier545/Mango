@@ -185,6 +185,8 @@ class Config:
 
     # Comma-separated tool names omitted from the LLM schema (see MANGO_DISABLED_TOOLS).
     disabled_tools: frozenset[str] = field(default_factory=frozenset)
+    # MANGO_SAFE_MODE=1: PTT-only, wake/always-listen off, nonessential tools disabled.
+    safe_mode: bool = False
 
     @classmethod
     def load(cls) -> Config:

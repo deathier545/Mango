@@ -29,6 +29,33 @@ from mango.timeouts import HTTP_LONG_S, HTTP_MEDIUM_S, HTTP_SHORT_S
 
 logger = logging.getLogger(__name__)
 
+_SAFE_MODE_DISABLED_TOOLS = frozenset(
+    {
+        "discord_voice",
+        "xbox_console",
+        "phone_call",
+        "run_powershell",
+        "run_routine",
+        "desktop_notify",
+        "reminders",
+        "delay_timer",
+    }
+)
+
+
+def apply_safe_mode(cfg: Config) -> None:
+    """Apply safe-mode overrides after env parsing (PTT-only debugging profile)."""
+    if not cfg.safe_mode:
+        return
+    cfg.wake_word_enabled = False
+    cfg.always_listen = False
+    cfg.wake.enabled = False
+    cfg.disabled_tools = frozenset(set(cfg.disabled_tools) | _SAFE_MODE_DISABLED_TOOLS)
+    logger.warning(
+        "MANGO_SAFE_MODE=1 active — wake word, always-listen, Discord bridge, reminders, "
+        "and nonessential tools disabled; push-to-talk only.",
+    )
+
 _EDGE_RATE_RE = re.compile(r"^[+-]?\d+%$")
 _EDGE_PITCH_RE = re.compile(r"^[+-]?\d+Hz$", re.IGNORECASE)
 _EDGE_VOLUME_RE = re.compile(r"^[+-]?\d+%$")
@@ -364,6 +391,8 @@ def build_config_from_env() -> Config:
         for part in _disabled_tools_raw.split(",")
         if part.strip()
     )
+    _safe_mode_raw = os.getenv("MANGO_SAFE_MODE", "").strip().lower()
+    safe_mode = _safe_mode_raw in ("1", "true", "yes", "on")
     quiet_raw = os.getenv("MANGO_QUIET_HOURS", "").strip()
     quiet_tuple = parse_quiet_hours(quiet_raw)
     quiet_tz = (
@@ -626,6 +655,7 @@ def build_config_from_env() -> Config:
         memory_merge_days=memory_merge_days,
         memory_daily_snapshots=memory_daily_snapshots,
         disabled_tools=disabled_tools,
+        safe_mode=safe_mode,
         llm=LlmConfig(
             provider=provider_raw,
             groq_model=model or "llama-3.3-70b-versatile",
@@ -808,5 +838,6 @@ def build_config_from_env() -> Config:
             cfg.elevenlabs_sts_after_tts,
             cfg.elevenlabs_sts_model,
         )
+    apply_safe_mode(cfg)
     return cfg
 

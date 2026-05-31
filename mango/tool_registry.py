@@ -6,6 +6,8 @@ import logging
 from typing import Any
 
 from mango.config import Config
+from mango.tool_cooldowns import check_tool_cooldown, record_tool_run
+from mango.tool_dispatch.simple_tools import dispatch_simple_tool
 from mango.integration_services import (
     DiscordVoiceToolService,
     HandoffRouterService,
@@ -39,32 +41,12 @@ from mango.tool_policy import (
     risk_level as policy_risk_level,
 )
 from mango.tools import (
-    badge_status,
-    clipboard_ai,
-    clipboard_write,
-    close_app,
-    daily_brief,
-    delay_timer,
-    desktop_notify,
-    globe_state,
-    globe_view,
-    memory_card,
-    open_app,
     phone_call,
-    product_research,
     read_clipboard,
-    reminders,
     run_powershell,
     run_routine,
     saved_contact_phone,
-    screenshot_desktop,
     search_files,
-    spotify_play,
-    spotify_session,
-    spotify_transport,
-    system_info,
-    therapy_support,
-    volume_control,
     web_search,
 )
 
@@ -93,6 +75,7 @@ class ToolRegistry:
         self._xbox_turn_off_pending = False
         self._xbox_turn_off_key: str | None = None
         self._xbox_turn_off_one_shot = False
+        self._last_tool_run: dict[str, float] = {}
 
     def requires_tool_confirmation(self, tool_name: str | None = None) -> bool:
         """Return whether spoken confirmation is required for a specific tool (or any tool)."""
@@ -185,6 +168,11 @@ class ToolRegistry:
                 f"ERR_TOOL_DISABLED:{name} is turned off on this PC "
                 "(remove it from MANGO_DISABLED_TOOLS to enable)."
             )
+        cooldown_msg = check_tool_cooldown(self._last_tool_run, name)
+        if cooldown_msg:
+            risk = self.risk_level(name)
+            self._emit_tool_done(name, risk, ok=False, error_code="ERR_TOOL_COOLDOWN")
+            return cooldown_msg
         risk = self.risk_level(name)
         if name == "run_powershell":
             logger.info(
@@ -213,20 +201,9 @@ class ToolRegistry:
                 )
                 return f"ERR_TOOL_HANDOFF_CONTRACT:{name}:{reason}"
         try:
-            if name == "open_app":
-                out = open_app.run(**arguments)
-            elif name == "close_app":
-                out = close_app.run(**arguments)
-            elif name == "spotify_play":
-                out = spotify_play.run(**arguments)
-            elif name == "spotify_transport":
-                out = spotify_transport.run(**arguments)
-            elif name == "spotify_session":
-                out = spotify_session.run(**arguments)
-            elif name == "globe_state":
-                out = globe_state.run(**arguments)
-            elif name == "globe_view":
-                out = globe_view.run(**arguments)
+            simple_out = dispatch_simple_tool(name, arguments, self._cfg)
+            if simple_out is not None:
+                out = simple_out
             elif name == "discord_voice":
                 args = dict(arguments)
                 if not self._cfg.discord_relax_intent_gates:
@@ -264,32 +241,6 @@ class ToolRegistry:
                 q = (arguments.get("query") or "").strip()
                 cap = max(1, min(int(self._cfg.search_max_results), 8))
                 out = web_search.run(q, max_results=cap)
-            elif name == "therapy_support":
-                out = therapy_support.run(
-                    str(arguments.get("situation") or ""),
-                    arguments.get("focus"),
-                )
-            elif name == "product_research":
-                out = product_research.run(
-                    str(arguments.get("product") or ""),
-                    arguments.get("angle"),
-                )
-            elif name == "system_info":
-                out = system_info.run(**arguments)
-            elif name == "reminders":
-                out = reminders.run(**arguments)
-            elif name == "delay_timer":
-                out = delay_timer.run(**arguments)
-            elif name == "desktop_notify":
-                out = desktop_notify.run(**arguments)
-            elif name == "volume_control":
-                out = volume_control.run(**arguments)
-            elif name == "screenshot_desktop":
-                out = screenshot_desktop.run(**arguments)
-            elif name == "clipboard_write":
-                out = clipboard_write.run(**arguments)
-            elif name == "memory_card":
-                out = memory_card.run(**arguments)
             elif name == "run_routine":
                 act = str(arguments.get("action") or "").strip().lower()
                 rid = str(arguments.get("routine_id") or "").strip()
@@ -302,12 +253,6 @@ class ToolRegistry:
                         **arguments,
                         conversation_messages=conversation_messages,
                     )
-            elif name == "clipboard_ai":
-                out = clipboard_ai.run(**arguments)
-            elif name == "daily_brief":
-                out = daily_brief.run(**arguments)
-            elif name == "badge_status":
-                out = badge_status.run(**arguments)
             elif name == "read_clipboard":
                 if self._cfg.clipboard_require_intent and not _clipboard_intent(last_user):
                     out = (
@@ -446,6 +391,7 @@ class ToolRegistry:
                     preview,
                 )
             self._emit_tool_done(name, risk, ok=True, out=out)
+            record_tool_run(self._last_tool_run, name)
             narrate_tool_after(name, arguments, out)
             return out
         except TypeError as exc:

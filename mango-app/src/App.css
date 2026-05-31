@@ -25,8 +25,11 @@
   overflow: hidden;
 }
 
-.app.modalOpen .workspace,
-.app.modalOpen .viewPane.viewPaneScroll.viewActive {
+.app.modalOpen .workspace {
+  overflow: hidden;
+}
+
+.app.modalOpen .viewPane.viewPaneScroll.viewActive:not(.settingsOverlay) {
   overflow: hidden;
 }
 
@@ -641,18 +644,13 @@ button:disabled {
 }
 
 .legacySphereWrap {
-  width: min(380px, 70vmin, 100%);
-  height: min(380px, 70vmin, 100%);
+  width: 380px;
+  height: 380px;
   display: grid;
   place-items: center;
   position: relative;
   filter: drop-shadow(0 0 18px var(--orb-secondary));
   transition: filter 180ms ease;
-}
-
-.hudScreen.hasQuickBar.hasLiveStrip .legacySphereWrap {
-  width: min(320px, 58vmin, 100%);
-  height: min(320px, 58vmin, 100%);
 }
 
 .orbCanvas {
@@ -785,6 +783,10 @@ button:disabled {
   display: grid;
   grid-template-columns: 430px 1fr;
   gap: 14px;
+}
+
+.contentGridSingle {
+  grid-template-columns: 1fr;
 }
 
 .chatLayout {
@@ -2061,19 +2063,32 @@ button:disabled {
 }
 
 .settingsOverlay {
-  z-index: 10;
+  position: fixed;
+  inset: 0;
+  z-index: 150;
   background: rgba(4, 10, 20, 0.92);
   backdrop-filter: blur(6px);
   display: flex;
   justify-content: center;
-  padding: 16px;
+  align-items: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: max(12px, env(safe-area-inset-top)) 16px
+    calc(var(--bottom-nav-reserve) + max(12px, env(safe-area-inset-bottom)));
   box-sizing: border-box;
 }
 
 .settingsOverlayInner {
   width: min(720px, 100%);
-  max-height: 100%;
-  overflow: auto;
+  margin: 12px auto;
+  flex: 0 0 auto;
+}
+
+.settingsOverlay .settingsGrid {
+  grid-template-columns: 1fr;
+  height: auto;
+  min-height: 0;
 }
 
 .settingsOverlayHead {
@@ -2082,10 +2097,56 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-bottom: 8px;
+  background: linear-gradient(180deg, rgba(8, 18, 34, 0.98), rgba(8, 18, 34, 0.92));
 }
 
 .settingsOverlayHead h2 {
   margin: 0;
+}
+
+.settingsOverlayHead > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.confirmBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(2, 8, 18, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.confirmDialog {
+  width: min(400px, 100%);
+  padding: 20px 22px;
+}
+
+.confirmDialog h3 {
+  margin: 0 0 8px;
+  font-size: 1.0625rem;
+}
+
+.confirmDialog p {
+  margin: 0 0 18px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ui-text-muted);
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .diagnosticsPanel {
@@ -2116,4 +2177,123 @@ button:disabled {
   border-color: var(--ui-accent);
   background: var(--ui-accent-soft);
   color: var(--ui-text);
+}
+
+/* Duo panel — Mango + Amber side-by-side */
+.hudScreen.duoModeOpen {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.hudScreen.duoModeOpen .hudSceneStack {
+  overflow: visible;
+  align-content: start;
+}
+
+.hudScreen.duoModeOpen .orbScene {
+  width: 100%;
+  max-width: 960px;
+  height: auto;
+  min-height: 0;
+}
+
+.duoScene {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 4px 16px;
+  box-sizing: border-box;
+}
+
+.duoOrbRow {
+  display: flex;
+  gap: 20px 28px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.duoOrbUnit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.duoOrbLabel {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+}
+
+.duoOrbUnit-amber .duoOrbLabel {
+  color: #ffb84d;
+}
+
+.duoSphereWrap {
+  width: 260px;
+  height: 260px;
+}
+
+.duoSphereWrap-amber {
+  filter: drop-shadow(0 0 20px rgba(255, 150, 50, 0.38));
+}
+
+.duoOrbCaption {
+  margin: 0;
+  font-size: 13px;
+  color: #b8d4ef;
+}
+
+.duoControls {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.duoTopicLabel {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #d0e6fb;
+}
+
+.duoControlActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.duoTranscript {
+  width: min(720px, 100%);
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: rgba(6, 16, 30, 0.85);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.duoTranscript p {
+  margin: 0 0 8px;
+}
+
+.liveLabelAmber {
+  color: #ffb84d;
+}
+
+@media (max-width: 700px) {
+  .duoSphereWrap {
+    width: 220px;
+    height: 220px;
+  }
 }

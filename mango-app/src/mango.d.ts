@@ -8,6 +8,7 @@ type MangoSettings = {
   wakeEnabled: boolean
   strictTools: boolean
   powershellConfirmation: boolean
+  safeMode: boolean
   groqModel: string
   edgeVoice: string
   edgeRate: string
@@ -63,6 +64,7 @@ type MangoEventPayload =
             totalTime: number | null
             queueTime: number | null
           }
+        | { kind: 'duo_phase'; speaker: string; phase: string; text: string }
     }
 
 type ChatHistoryItem = {
@@ -70,27 +72,59 @@ type ChatHistoryItem = {
   text: string
 }
 
+type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
+
 interface Window {
   mango: {
-    getStatus: () => Promise<MangoStatus>
-    getDiscordBridgeStatus: () => Promise<{
-      reachable: boolean
-      ok: boolean
-      musicOn: boolean
-      ownerVoice: string | null
-    }>
-    getRecentLogs: () => Promise<Array<{ ts: number; kind: string; line: string }>>
-    getSettings: () => Promise<MangoSettings>
-    saveSettings: (settings: MangoSettings) => Promise<MangoSettings>
-    start: (settings?: Partial<MangoSettings>) => Promise<MangoStatus>
-    stop: () => Promise<MangoStatus>
+    getStatus: () => Promise<MangoStatus | IpcResult<MangoStatus>>
+    getDiscordBridgeStatus: () => Promise<
+      | {
+          reachable: boolean
+          ok: boolean
+          musicOn: boolean
+          ownerVoice: string | null
+        }
+      | IpcResult<{
+          reachable: boolean
+          ok: boolean
+          musicOn: boolean
+          ownerVoice: string | null
+        }>
+    >
+    getRecentLogs: () => Promise<
+      Array<{ ts: number; kind: string; line: string }> | IpcResult<Array<{ ts: number; kind: string; line: string }>>
+    >
+    getSettings: () => Promise<MangoSettings | IpcResult<MangoSettings>>
+    saveSettings: (settings: MangoSettings) => Promise<MangoSettings | IpcResult<MangoSettings>>
+    start: (settings?: Partial<MangoSettings>) => Promise<MangoStatus | IpcResult<MangoStatus>>
+    stop: () => Promise<MangoStatus | IpcResult<MangoStatus>>
     sendText: (
       text: string,
       history?: ChatHistoryItem[],
     ) => Promise<{ ok: boolean; reply?: string; error?: string }>
-    openLogsFolder: () => Promise<{ ok: boolean; path: string }>
-    copyDiagnostics: () => Promise<{ ok: boolean; text: string }>
-    saveUsageReport: (kind: 'json' | 'csv', content: string) => Promise<{ ok: boolean; path: string }>
+    runDuo: (payload: {
+      topic: string
+      rounds?: number
+      speak?: boolean
+    }) => Promise<
+      | {
+          ok: boolean
+          lines?: Array<{ speaker: string; text: string }>
+          topic?: string
+          rounds?: number
+          error?: string
+        }
+      | IpcResult<{
+          ok: boolean
+          lines?: Array<{ speaker: string; text: string }>
+          topic?: string
+          rounds?: number
+          error?: string
+        }>
+    >
+    openLogsFolder: () => Promise<{ path: string } | IpcResult<{ path: string }>>
+    copyDiagnostics: () => Promise<{ text: string } | IpcResult<{ text: string }>>
+    saveUsageReport: (kind: 'json' | 'csv', content: string) => Promise<{ path: string } | IpcResult<{ path: string }>>
     smartSnapshot: () => Promise<{ ok: boolean; data?: unknown; error?: string }>
     smartBrief: () => Promise<{ ok: boolean; text?: string; error?: string }>
     smartCardAdd: (payload: {

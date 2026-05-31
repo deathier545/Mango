@@ -106,6 +106,14 @@ export function SettingsPanel({
             />
             PowerShell confirmation
           </label>
+          <label title="Push-to-talk only; disables wake, always-listen, Discord bridge, and risky tools">
+            <input
+              type="checkbox"
+              checked={settings.safeMode}
+              onChange={(e) => onChange({ ...settings, safeMode: e.target.checked })}
+            />
+            Safe mode (debug startup)
+          </label>
           <h3>Model and speech</h3>
           <label>
             Groq model

@@ -2,6 +2,8 @@ import { useEffect, type RefObject } from 'react'
 import type { OrbState } from '../types/ui'
 import { ORB_TARGETS } from '../orb/orbConfig'
 
+type OrbTargetMap = typeof ORB_TARGETS
+
 export function useOrbCanvas(
   enabled: boolean,
   orbState: OrbState,
@@ -9,6 +11,7 @@ export function useOrbCanvas(
   orbCanvasRef: RefObject<HTMLCanvasElement | null>,
   audioLevelRef: RefObject<number>,
   orbStateRef: RefObject<OrbState>,
+  targets: OrbTargetMap = ORB_TARGETS,
 ) {
   useEffect(() => {
     orbStateRef.current = orbState
@@ -113,7 +116,7 @@ export function useOrbCanvas(
       const dt = clamp01((nowMs - lastFrameMs) / 1000)
       lastFrameMs = nowMs
       const stateNow = orbStateRef.current ?? 'idle'
-      const target = ORB_TARGETS[stateNow] ?? ORB_TARGETS.idle
+      const target = targets[stateNow] ?? targets.idle
 
       const realLevel = clamp01(audioLevelRef.current ?? 0)
       // Pulse from real TTS loudness whenever audio is playing (not only ai_state=speaking).
@@ -125,7 +128,7 @@ export function useOrbCanvas(
           : 0
       const motionSpeaking = audible || stateNow === 'speaking'
       audioLevelRef.current = (audioLevelRef.current ?? 0) * 0.86
-      const motionTarget = motionSpeaking ? ORB_TARGETS.speaking : target
+      const motionTarget = motionSpeaking ? targets.speaking : target
       visual.rgb = smoothRgb(visual.rgb, motionTarget.rgb, dt, audible ? 6.5 : 4.2)
       visual.rotSpeed = smooth(visual.rotSpeed, motionTarget.rotSpeed, dt, audible ? 5.5 : 3.2)
       visual.breath = smooth(visual.breath, motionTarget.breath, dt, audible ? 6.0 : 4.2)

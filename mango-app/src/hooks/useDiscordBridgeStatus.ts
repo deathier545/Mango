@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { unwrapIpcData } from '../lib/ipc-unpack'
 import type { DiscordBridgeStatus } from '../types/ui'
 
 const DEFAULT: DiscordBridgeStatus = {
@@ -41,7 +42,7 @@ export function useDiscordBridgeStatus(enabled: boolean, intervalMs = 8_000) {
     const poll = async () => {
       try {
         if (window.mango?.getDiscordBridgeStatus) {
-          const data = await window.mango.getDiscordBridgeStatus()
+          const data = unwrapIpcData(await window.mango.getDiscordBridgeStatus())
           if (!cancelled) {
             setStatus(
               data.reachable

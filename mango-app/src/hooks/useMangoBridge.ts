@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { unwrapIpcData } from '../lib/ipc-unpack'
 import type { MangoEvent } from '../types/events'
 import type {
   LogEntry,
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: MangoSettings = {
   wakeEnabled: true,
   strictTools: false,
   powershellConfirmation: true,
+  safeMode: false,
   groqModel: 'llama-3.3-70b-versatile',
   edgeVoice: 'en-US-GuyNeural',
   edgeRate: '+0%',
@@ -78,16 +80,17 @@ export function useMangoBridge(notify: NotifyFn, globeHandlers?: MangoBridgeGlob
       return
     }
     let unsub: (() => void) | null = null
-    void window.mango.getStatus().then(setStatus).catch((err) => notify(`Failed to load Mango status: ${String(err)}`, 'error'))
+    void window.mango.getStatus().then((r) => setStatus(unwrapIpcData(r))).catch((err) => notify(`Failed to load Mango status: ${String(err)}`, 'error'))
     void window.mango
       .getRecentLogs()
-      .then((items) => setLogs(items.slice(-200)))
+      .then((items) => setLogs(unwrapIpcData(items).slice(-200)))
       .catch((err) => notify(`Failed to load logs: ${String(err)}`, 'error'))
     void window.mango
       .getSettings()
       .then((s) => {
-        setSettings(s)
-        setSavedSettings(s)
+        const loaded = unwrapIpcData(s)
+        setSettings(loaded)
+        setSavedSettings(loaded)
       })
       .catch((err) => notify(`Failed to load settings: ${String(err)}`, 'error'))
 
@@ -285,13 +288,13 @@ export function useMangoBridge(notify: NotifyFn, globeHandlers?: MangoBridgeGlob
     statusRunningRef.current = status.running
   }, [status.running])
 
-  async function startMango() {
+  const startMango = useCallback(async () => {
     if (!window.mango) return
     try {
       startPendingRef.current = true
       setStartPending(true)
       setStartProgress('Starting Mango')
-      const next = await window.mango.start(settings)
+      const next = unwrapIpcData(await window.mango.start(settings))
       setStatus(next)
       if (next.running) {
         startPendingRef.current = false
@@ -305,12 +308,12 @@ export function useMangoBridge(notify: NotifyFn, globeHandlers?: MangoBridgeGlob
       setStartProgress('')
       notify(`Failed to start Mango: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
-  }
+  }, [settings, notify])
 
-  async function stopMango() {
+  const stopMango = useCallback(async () => {
     if (!window.mango) return
     try {
-      const next = await window.mango.stop()
+      const next = unwrapIpcData(await window.mango.stop())
       setStatus(next)
       setAssistantState('stopped')
       startPendingRef.current = false
@@ -320,9 +323,9 @@ export function useMangoBridge(notify: NotifyFn, globeHandlers?: MangoBridgeGlob
     } catch (err) {
       notify(`Failed to stop Mango: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
-  }
+  }, [notify])
 
-  async function restartMango() {
+  const restartMango = useCallback(async () => {
     if (!window.mango) return
     try {
       startPendingRef.current = true
@@ -330,7 +333,7 @@ export function useMangoBridge(notify: NotifyFn, globeHandlers?: MangoBridgeGlob
       setStartProgress('Restarting Mango')
       notify('Restarting Mango…', 'info')
       await window.mango.stop()
-      const next = await window.mango.start(settings)
+      const next = unwrapIpcData(await window.mango.start(settings))
       setStatus(next)
       if (next.running) {
         startPendingRef.current = false
@@ -344,96 +347,134 @@ export function useMangoBridge(notify: NotifyFn, globeHandlers?: MangoBridgeGlob
       setStartProgress('')
       notify(`Failed to restart Mango: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
-  }
+  }, [settings, notify])
 
-  async function saveSettings() {
+  const saveSettings = useCallback(async () => {
     if (!window.mango) return
     try {
-      const saved = await window.mango.saveSettings(settings)
+      const saved = unwrapIpcData(await window.mango.saveSettings(settings))
       setSettings(saved)
       setSavedSettings(saved)
       notify('Settings saved.', 'success')
     } catch (err) {
       notify(`Failed to save settings: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
-  }
+  }, [settings, notify])
 
-  async function openLogsFolder() {
+  const openLogsFolder = useCallback(async () => {
     if (!window.mango) return
     try {
-      const res = await window.mango.openLogsFolder()
-      if (res.ok) notify(`Opened logs folder: ${res.path}`, 'success')
+      const res = unwrapIpcData(await window.mango.openLogsFolder())
+      notify(`Opened logs folder: ${res.path}`, 'success')
     } catch (err) {
       notify(`Failed to open logs folder: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
-  }
+  }, [notify])
 
-  async function copyDiagnostics() {
+  const copyDiagnostics = useCallback(async () => {
     if (!window.mango) return
     try {
-      const res = await window.mango.copyDiagnostics()
-      if (res.ok) notify('Diagnostics copied.', 'success')
+      unwrapIpcData(await window.mango.copyDiagnostics())
+      notify('Diagnostics copied.', 'success')
     } catch (err) {
       notify(`Failed to copy diagnostics: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
-  }
+  }, [notify])
 
-  async function exportUsageJson(payload: object) {
+  const exportUsageJson = useCallback(async (payload: object) => {
     if (!window.mango) return
     try {
-      const res = await window.mango.saveUsageReport('json', JSON.stringify(payload, null, 2))
-      if (res.ok) notify(`Saved usage JSON: ${res.path}`, 'success')
+      const res = unwrapIpcData(await window.mango.saveUsageReport('json', JSON.stringify(payload, null, 2)))
+      notify(`Saved usage JSON: ${res.path}`, 'success')
     } catch (err) {
       notify(`Failed to export JSON: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
-  }
+  }, [notify])
 
-  async function exportUsageCsv(csv: string) {
+  const exportUsageCsv = useCallback(async (csv: string) => {
     if (!window.mango) return
     try {
-      const res = await window.mango.saveUsageReport('csv', csv)
-      if (res.ok) notify(`Saved usage CSV: ${res.path}`, 'success')
+      const res = unwrapIpcData(await window.mango.saveUsageReport('csv', csv))
+      notify(`Saved usage CSV: ${res.path}`, 'success')
     } catch (err) {
       notify(`Failed to export CSV: ${err instanceof Error ? err.message : String(err)}`, 'error')
     }
-  }
+  }, [notify])
 
-  return {
-    status,
-    settings,
-    setSettings,
-    savedSettings,
-    assistantState,
-    setAssistantState,
-    transcript,
-    reply,
-    globeVisible,
-    setGlobeVisible,
-    globeUrl,
-    globeLabel,
-    mapTarget,
-    logs,
-    conversationTimeline,
-    setConversationTimeline,
-    chatTimeline,
-    setChatTimeline,
-    turnMetrics,
-    toolEvents,
-    usageSamples,
-    lastErrorAt,
-    startPending,
-    startProgress,
-    chatSeqRef,
-    pendingChatRequestRef,
-    audioLevelRef,
-    statusRunningRef,
-    startMango,
-    stopMango,
-    restartMango,
-    saveSettings,
-    openLogsFolder,
-    copyDiagnostics,
-    exportUsageJson,
-    exportUsageCsv,
-  }
+  const settingsDirty = useMemo(
+    () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
+    [settings, savedSettings],
+  )
+
+  return useMemo(
+    () => ({
+      status,
+      settings,
+      setSettings,
+      savedSettings,
+      settingsDirty,
+      assistantState,
+      setAssistantState,
+      transcript,
+      reply,
+      globeVisible,
+      setGlobeVisible,
+      globeUrl,
+      globeLabel,
+      mapTarget,
+      logs,
+      conversationTimeline,
+      setConversationTimeline,
+      chatTimeline,
+      setChatTimeline,
+      turnMetrics,
+      toolEvents,
+      usageSamples,
+      lastErrorAt,
+      startPending,
+      startProgress,
+      chatSeqRef,
+      pendingChatRequestRef,
+      audioLevelRef,
+      statusRunningRef,
+      startMango,
+      stopMango,
+      restartMango,
+      saveSettings,
+      openLogsFolder,
+      copyDiagnostics,
+      exportUsageJson,
+      exportUsageCsv,
+    }),
+    [
+      status,
+      settings,
+      savedSettings,
+      settingsDirty,
+      assistantState,
+      transcript,
+      reply,
+      globeVisible,
+      globeUrl,
+      globeLabel,
+      mapTarget,
+      logs,
+      conversationTimeline,
+      chatTimeline,
+      turnMetrics,
+      toolEvents,
+      usageSamples,
+      lastErrorAt,
+      startPending,
+      startProgress,
+      startMango,
+      stopMango,
+      restartMango,
+      saveSettings,
+      openLogsFolder,
+      copyDiagnostics,
+      exportUsageJson,
+      exportUsageCsv,
+    ],
+  )
 }

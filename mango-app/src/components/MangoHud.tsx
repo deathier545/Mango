@@ -1,50 +1,47 @@
 import type { RefObject } from 'react'
 
+import { DuoScene, type DuoLine } from './DuoScene'
 import { HUD_QUICK_PROMPTS } from '../lib/quickPrompts'
 
 import type { OrbState, ToolEvent, TurnMetrics } from '../types/ui'
 
 import { cleanUiText, orbCaption } from '../lib/format'
 
-
-
 type MangoHudProps = {
-
   orbState: OrbState
-
   running: boolean
-
   transcript: string
-
   reply: string
-
   globeVisible: boolean
-
   globeLabel: string
-
   hasGlobeUrl: boolean
-
   orbWrapRef: RefObject<HTMLDivElement | null>
-
   orbCanvasRef: RefObject<HTMLCanvasElement | null>
-
   mapHostRef: RefObject<HTMLDivElement | null>
-
   onBackFromMap: () => void
-
   onOpenExternal: () => void
-
   onResumeMap: () => void
-
   onStart: () => void
-
   startPending: boolean
   startProgress: string
   turnMetrics: TurnMetrics | null
   latestToolEvent: ToolEvent | null
-
   onQuickPrompt: (text: string) => void
-
+  duoMode: boolean
+  onEnterDuo: () => void
+  duoEnabled: boolean
+  mangoDuoState: OrbState
+  amberDuoState: OrbState
+  duoTopic: string
+  duoRounds: number
+  duoRunning: boolean
+  duoLines: DuoLine[]
+  onDuoTopicChange: (topic: string) => void
+  onDuoRoundsChange: (rounds: number) => void
+  onStartDuo: () => void
+  onExitDuo: () => void
+  mangoDuoAudioRef: RefObject<number>
+  amberDuoAudioRef: RefObject<number>
 }
 
 
@@ -85,16 +82,29 @@ export function MangoHud({
   latestToolEvent,
 
   onQuickPrompt,
-
+  duoMode,
+  onEnterDuo,
+  duoEnabled,
+  mangoDuoState,
+  amberDuoState,
+  duoTopic,
+  duoRounds,
+  duoRunning,
+  duoLines,
+  onDuoTopicChange,
+  onDuoRoundsChange,
+  onStartDuo,
+  onExitDuo,
+  mangoDuoAudioRef,
+  amberDuoAudioRef,
 }: MangoHudProps) {
-
-  const showMap = globeVisible
+  const showMap = globeVisible && !duoMode
 
   const caption = orbCaption(orbState, running)
 
-  const hasLiveStrip = running && Boolean(transcript || reply) && !showMap
+  const hasLiveStrip = running && Boolean(transcript || reply) && !showMap && !duoMode
 
-  const hasQuickBar = running && !showMap
+  const hasQuickBar = running && !showMap && !duoMode
 
 
 
@@ -107,7 +117,7 @@ export function MangoHud({
     hasLiveStrip ? 'hasLiveStrip' : '',
 
     hasQuickBar ? 'hasQuickBar' : '',
-
+    duoMode ? 'duoModeOpen' : '',
   ]
 
     .filter(Boolean)
@@ -164,11 +174,21 @@ export function MangoHud({
 
           ))}
 
+          <button type="button" className="btnSecondary" onClick={onEnterDuo}>
+            Duo panel
+          </button>
+
         </div>
 
       ) : null}
 
-
+      {!showMap && !duoMode && !hasQuickBar ? (
+        <div className="mangoQuickActions">
+          <button type="button" className="btnSecondary" onClick={onEnterDuo}>
+            Duo panel
+          </button>
+        </div>
+      ) : null}
 
       <div className="hudSceneStack">
 
@@ -202,9 +222,8 @@ export function MangoHud({
 
 
 
-        <div className={`sceneLayer orbScene state-${orbState} ${showMap ? '' : 'sceneVisible'}`}>
-
-          {!running && !showMap ? (
+        <div className={`sceneLayer orbScene state-${duoMode ? mangoDuoState : orbState} ${showMap ? '' : 'sceneVisible'}`}>
+          {!running && !showMap && !duoMode ? (
 
             <div className="offlineOverlay">
 
@@ -223,18 +242,32 @@ export function MangoHud({
 
           ) : null}
 
-          <div className="legacySphereWrap" ref={orbWrapRef}>
-
-            <canvas ref={orbCanvasRef} className="orbCanvas" aria-hidden="true" />
-
-          </div>
-
-          <p className="orbCaption" aria-live="polite">
-
-            {caption}
-
-          </p>
-
+          {duoMode ? (
+            <DuoScene
+              enabled={duoEnabled}
+              mangoState={mangoDuoState}
+              amberState={amberDuoState}
+              topic={duoTopic}
+              rounds={duoRounds}
+              running={duoRunning}
+              lines={duoLines}
+              onTopicChange={onDuoTopicChange}
+              onRoundsChange={onDuoRoundsChange}
+              onStart={onStartDuo}
+              onExit={onExitDuo}
+              mangoAudioRef={mangoDuoAudioRef}
+              amberAudioRef={amberDuoAudioRef}
+            />
+          ) : (
+            <>
+              <div className="legacySphereWrap" ref={orbWrapRef}>
+                <canvas ref={orbCanvasRef} className="orbCanvas" aria-hidden="true" />
+              </div>
+              <p className="orbCaption" aria-live="polite">
+                {caption}
+              </p>
+            </>
+          )}
         </div>
 
       </div>

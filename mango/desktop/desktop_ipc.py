@@ -6,6 +6,8 @@ import logging
 import time
 from typing import Any
 
+from mango.desktop_events import emit_desktop_event
+
 logger = logging.getLogger(__name__)
 
 _parent_queue: Any = None  # multiprocessing.Queue | None
@@ -49,6 +51,7 @@ def try_send_globe_url(
         import json
 
         logger.info("MANGO_GLOBE: %s", json.dumps(msg, ensure_ascii=True, separators=(",", ":")))
+        emit_desktop_event({"type": "globe", **msg})
         return True
     except Exception:
         logger.warning("desktop_ipc: could not log globe fallback message", exc_info=True)
@@ -66,6 +69,7 @@ def try_set_globe_visible(visible: bool) -> bool:
             logger.warning("desktop_ipc: could not send globe_state message", exc_info=True)
             return False
     logger.info("MANGO_GLOBE_VISIBLE: %s", "1" if value else "0")
+    emit_desktop_event({"type": "globe_state", "visible": value})
     return True
 
 
@@ -75,7 +79,9 @@ def try_set_ai_state(state: str) -> bool:
     if s not in {"idle", "listening", "thinking", "speaking", "awaiting", "stopped", "error"}:
         return False
     if _parent_queue is None:
-        return False
+        emit_desktop_event({"type": "state", "state": s})
+        logger.info("MANGO_STATE: %s", s)
+        return True
     try:
         _parent_queue.put({"type": "ai_state", "state": s})
         return True
@@ -109,4 +115,5 @@ def try_set_audio_level(level: float) -> bool:
     _last_audio_emit_ts = now
     _last_audio_emit_level = v
     logger.info("MANGO_AUDIO_LEVEL: %.4f", v)
+    emit_desktop_event({"type": "audio_level", "level": v})
     return True

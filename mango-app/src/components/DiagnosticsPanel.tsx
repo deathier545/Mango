@@ -23,8 +23,9 @@ type DiagnosticsPanelProps = {
 }
 
 const SUB_TABS: { id: DiagSubView; label: string }[] = [
-  { id: 'voice', label: 'Voice log' },
+  { id: 'voice', label: 'Voice' },
   { id: 'metrics', label: 'Metrics' },
+  { id: 'system', label: 'System' },
 ]
 
 export function DiagnosticsPanel({
@@ -56,15 +57,33 @@ export function DiagnosticsPanel({
       </nav>
 
       {subView === 'voice' ? (
-        <ConversationPanel transcript={transcript} reply={reply} timeline={timeline} logs={logs} />
-      ) : (
+        <ConversationPanel
+          transcript={transcript}
+          reply={reply}
+          timeline={timeline}
+          logs={logs}
+          section="voice"
+        />
+      ) : null}
+
+      {subView === 'system' ? (
+        <ConversationPanel
+          transcript={transcript}
+          reply={reply}
+          timeline={timeline}
+          logs={logs}
+          section="system"
+        />
+      ) : null}
+
+      {subView === 'metrics' ? (
         <MetricsPanel
           turnMetrics={turnMetrics}
           toolEvents={toolEvents}
           usageSamples={usageSamples}
           usageTotals={usageTotals}
         />
-      )}
+      ) : null}
     </div>
   )
 }
