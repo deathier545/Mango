@@ -125,8 +125,8 @@ function App() {
   orbStateRef.current = orbState
 
   const duoBlocked = useMemo(
-    () => status.running && !['idle', 'listening', 'stopped'].includes(orbState),
-    [status.running, orbState],
+    () => manualSending || !['idle', 'listening', 'stopped'].includes(orbState),
+    [manualSending, orbState],
   )
 
   const duo = useDuoChat(notify, duoBlocked)
@@ -257,7 +257,10 @@ function App() {
       setAssistantState('thinking')
       try {
         const res = unwrapIpcData(await window.mango.sendText(text, submitHistory))
-        if (pendingChatRequestRef.current !== requestId) return
+        if (pendingChatRequestRef.current !== requestId) {
+          setChatTimeline((prev) => prev.filter((item) => item.id !== `${requestId}-pending`))
+          return
+        }
         if (!res.ok) {
           throw new Error(res.error || 'No response from manual text bridge.')
         }
@@ -292,6 +295,8 @@ function App() {
             ]
           })
           notify(`Manual message failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+        } else {
+          setChatTimeline((prev) => prev.filter((item) => item.id !== `${requestId}-pending`))
         }
         setAssistantState(statusRunningRef.current ? 'listening' : 'idle')
       } finally {

@@ -150,6 +150,7 @@ function createProcessManager({
   }
 
   function stopMango() {
+    stopDuoChat();
     if (!mangoProc || !isProcessAlive(mangoProc)) {
       mangoProc = null;
       startedAt = null;
@@ -191,7 +192,7 @@ function createProcessManager({
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => {
           try {
-            if (!proc.killed) proc.kill();
+            terminateMangoProcessTree(proc);
           } catch {
             // ignore
           }
@@ -314,7 +315,7 @@ function createProcessManager({
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => {
           try {
-            if (!proc.killed) proc.kill();
+            terminateMangoProcessTree(proc);
           } catch {
             // ignore
           }
@@ -429,10 +430,11 @@ function createProcessManager({
 
   function runSmartCmd(args) {
     const py = pythonExecPath(workspaceRoot, appRoot);
+    const cfg = loadSettings();
     try {
       const result = spawnSync(py, ["-m", "mango", "--smart", ...args], {
         cwd: workspaceRoot,
-        env: process.env,
+        env: mangoChildEnv(cfg),
         encoding: "utf8",
         windowsHide: true,
         timeout: 120000,
@@ -447,10 +449,16 @@ function createProcessManager({
     }
   }
 
+  function shutdownAll() {
+    stopDuoChat();
+    stopMango();
+  }
+
   return {
     getStatus,
     startMango,
     stopMango,
+    shutdownAll,
     runManualTextTurn,
     runDuoChat,
     stopDuoChat,

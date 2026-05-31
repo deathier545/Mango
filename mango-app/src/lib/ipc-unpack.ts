@@ -4,7 +4,7 @@ export type IpcResult<T> =
 
 /** Unwrap `{ ok, data }` from Electron IPC; pass through legacy bare values. */
 export function unwrapIpcData<T>(result: T | IpcResult<T>): T {
-  if (result && typeof result === 'object' && 'ok' in result) {
+  if (result && typeof result === 'object' && 'ok' in result && 'data' in result) {
     const wrapped = result as IpcResult<T>
     if (!wrapped.ok) {
       throw new Error(wrapped.error || 'IPC call failed')

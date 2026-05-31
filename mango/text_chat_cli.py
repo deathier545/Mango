@@ -4,11 +4,20 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+_ENV_BOOT = Path(__file__).resolve().parent.parent / ".env"
+if _ENV_BOOT.is_file():
+    load_dotenv(dotenv_path=_ENV_BOOT, override=False, encoding="utf-8-sig")
+
+if sys.platform == "win32":
+    _sdl = (os.getenv("MANGO_SDL_AUDIODRIVER") or "directsound").strip() or "directsound"
+    os.environ.setdefault("SDL_AUDIODRIVER", _sdl)
 
 from mango.audio import init_voice_mixer
 from mango.config import Config

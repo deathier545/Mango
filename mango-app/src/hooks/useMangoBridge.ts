@@ -332,7 +332,14 @@ export function useMangoBridge(notify: NotifyFn, globeHandlers?: MangoBridgeGlob
       setStartPending(true)
       setStartProgress('Restarting Mango')
       notify('Restarting Mango…', 'info')
-      await window.mango.stop()
+      if (window.mango.stopDuo) {
+        try {
+          unwrapIpcData(await window.mango.stopDuo())
+        } catch {
+          // ignore duo stop errors during restart
+        }
+      }
+      unwrapIpcData(await window.mango.stop())
       const next = unwrapIpcData(await window.mango.start(settings))
       setStatus(next)
       if (next.running) {

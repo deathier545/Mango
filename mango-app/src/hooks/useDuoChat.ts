@@ -12,6 +12,7 @@ const MAX_DUO_TOPIC = 300
 function phaseToOrbState(phase: string): OrbState {
   if (phase === 'thinking') return 'thinking'
   if (phase === 'speaking') return 'speaking'
+  if (phase === 'tts_error') return 'error'
   if (phase === 'idle') return 'idle'
   return 'listening'
 }
@@ -53,6 +54,9 @@ export function useDuoChat(notify: NotifyFn, duoBlocked: boolean) {
       if (p.kind !== 'duo_phase') return
       const speaker = p.speaker === 'amber' ? 'amber' : 'mango'
       const phase = phaseToOrbState(p.phase)
+      if (p.phase === 'tts_error') {
+        notify('Duo voice playback failed. Try text-only mode or check audio settings.', 'error')
+      }
       if (speaker === 'amber') {
         setAmberDuoState(phase)
         amberAudioRef.current = phase === 'speaking' ? 0.35 : 0

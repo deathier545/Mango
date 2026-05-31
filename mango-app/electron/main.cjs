@@ -208,12 +208,12 @@ app.whenReady().then(() => {
 
 app.on("before-quit", () => {
   app.isQuitting = true;
-  processManager.stopMango();
+  processManager.shutdownAll();
   discordBridge.stop();
 });
 
 app.on("window-all-closed", () => {
-  processManager.stopMango();
+  processManager.shutdownAll();
   discordBridge.stop();
   if (process.platform !== "darwin") app.quit();
 });

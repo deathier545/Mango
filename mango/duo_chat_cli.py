@@ -22,6 +22,7 @@ if sys.platform == "win32":
     os.environ.setdefault("SDL_AUDIODRIVER", _sdl)
 
 from groq import BadRequestError
+import httpx
 
 from mango.audio import init_voice_mixer
 from mango.config import Config
@@ -79,9 +80,13 @@ def _duo_context(lines: list[dict[str, str]], max_lines: int = 8) -> str:
 
 def _llm_reply(llm: GroqLLM | OllamaLLM, messages: list[dict[str, str]]) -> str:
     try:
-        raw = llm.chat(messages)
+        completion = llm.chat(messages, tools=[])
+        raw = (completion.choices[0].message.content or "").strip()
     except BadRequestError as exc:
         logger.error("Duo turn rejected by provider: %s", exc)
+        return "I'm having trouble responding right now."
+    except (httpx.HTTPStatusError, httpx.RequestError, RuntimeError, IndexError, AttributeError) as exc:
+        logger.error("Duo turn failed: %s", exc)
         return "I'm having trouble responding right now."
     return _clean_line(raw)
 
@@ -89,7 +94,6 @@ def _llm_reply(llm: GroqLLM | OllamaLLM, messages: list[dict[str, str]]) -> str:
 def _speak_line(cfg: Config, *, voice: str, text: str, speaker: str) -> bool:
     if not text.strip():
         return True
-    init_voice_mixer()
     tts = EdgeTTS(
         voice=voice,
         rate=cfg.edge_rate,
@@ -122,7 +126,9 @@ def _speak_line(cfg: Config, *, voice: str, text: str, speaker: str) -> bool:
 
 def _announce_line(*, speaker: str, text: str, speak: bool, cfg: Config, voice: str) -> None:
     if speak:
-        _speak_line(cfg, voice=voice, text=text, speaker=speaker)
+        ok = _speak_line(cfg, voice=voice, text=text, speaker=speaker)
+        if not ok:
+            return
     else:
         _emit_phase(speaker, "speaking", text)
         time.sleep(0.85)
@@ -144,6 +150,8 @@ def main() -> None:
         speak = bool(req.get("speak", True))
 
         cfg = Config.load()
+        if speak:
+            init_voice_mixer()
         if cfg.llm_provider == "ollama":
             llm: GroqLLM | OllamaLLM = OllamaLLM(
                 base_url=cfg.ollama_base_url,
