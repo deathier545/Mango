@@ -50,6 +50,12 @@ export type ParsedEvent =
       phase: string
       text: string
     }
+  | {
+      kind: 'duo_done'
+      ok: boolean
+      lines: Array<{ speaker?: string; text?: string }>
+      error: string
+    }
 
 export type MangoEvent =
   | { type: 'log'; payload: { ts: number; kind: string; line: string } }

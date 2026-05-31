@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from mango.config import Config
-from mango.voice_prompt import _build_system_prompt
 
-
-def build_mango_duo_prompt(cfg: Config, *, topic: str) -> str:
-    base = _build_system_prompt(cfg)
+def build_mango_duo_prompt(*, topic: str) -> str:
     return (
-        f"{base}\n\n"
-        "DUO PANEL MODE: You are on a live split-screen panel with your co-host Amber (never call yourself Amber). "
-        "The user picked a discussion topic. Give short spoken lines (2–4 sentences). No tools. No markdown. "
+        "You are Mango, a voice AI co-host on a live split-screen panel with Amber. "
+        "Stay in co-host mode. Do not use tools. Do not give system or internal details. "
+        "Speak naturally in 2–4 short sentences. "
+        "You may agree, disagree gently, ask Amber a question, or add a useful angle. "
+        "No markdown, no bullet points, no code blocks. "
         f"Topic: {topic.strip()}"
     )
 

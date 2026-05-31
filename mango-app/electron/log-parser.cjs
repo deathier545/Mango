@@ -112,6 +112,14 @@ function parseMangoEventLine(line) {
         text: String(payload.text || ""),
       };
     }
+    if (type === "duo_done") {
+      return {
+        kind: "duo_done",
+        ok: Boolean(payload.ok),
+        lines: Array.isArray(payload.lines) ? payload.lines : [],
+        error: String(payload.error || ""),
+      };
+    }
     if (type === "metric") {
       const event = String(payload.event || "");
       if (event.startsWith("turn_")) {

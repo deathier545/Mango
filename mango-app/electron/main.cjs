@@ -192,6 +192,7 @@ app.whenReady().then(() => {
     stopMango: () => processManager.stopMango(),
     runManualTextTurn: (text, history) => processManager.runManualTextTurn(text, history),
     runDuoChat: (payload) => processManager.runDuoChat(payload),
+    stopDuoChat: () => processManager.stopDuoChat(),
     runSmartCmd: (args) => processManager.runSmartCmd(args),
     buildDiagnostics,
   });

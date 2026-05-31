@@ -65,6 +65,12 @@ type MangoEventPayload =
             queueTime: number | null
           }
         | { kind: 'duo_phase'; speaker: string; phase: string; text: string }
+        | {
+            kind: 'duo_done'
+            ok: boolean
+            lines: Array<{ speaker?: string; text?: string }>
+            error: string
+          }
     }
 
 type ChatHistoryItem = {
@@ -101,7 +107,10 @@ interface Window {
     sendText: (
       text: string,
       history?: ChatHistoryItem[],
-    ) => Promise<{ ok: boolean; reply?: string; error?: string }>
+    ) => Promise<
+      | { ok: boolean; reply?: string; error?: string }
+      | IpcResult<{ ok: boolean; reply?: string; error?: string }>
+    >
     runDuo: (payload: {
       topic: string
       rounds?: number
@@ -122,6 +131,7 @@ interface Window {
           error?: string
         }>
     >
+    stopDuo: () => Promise<{ stopped: boolean } | IpcResult<{ stopped: boolean }>>
     openLogsFolder: () => Promise<{ path: string } | IpcResult<{ path: string }>>
     copyDiagnostics: () => Promise<{ text: string } | IpcResult<{ text: string }>>
     saveUsageReport: (kind: 'json' | 'csv', content: string) => Promise<{ path: string } | IpcResult<{ path: string }>>
@@ -134,6 +144,7 @@ interface Window {
     }) => Promise<{ ok: boolean; card?: unknown; error?: string }>
     smartCardDelete: (cardId: string) => Promise<{ ok: boolean; error?: string }>
     smartInboxAdd: (text: string) => Promise<{ ok: boolean; item?: unknown; error?: string }>
+    bridgeVersion?: number
     onEvent: (cb: (payload: MangoEventPayload) => void) => () => void
   }
 }

@@ -2180,6 +2180,39 @@ button:disabled {
 }
 
 /* Duo panel — Mango + Amber side-by-side */
+.hudModeToggle {
+  position: relative;
+  z-index: 4;
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 auto 8px;
+  padding: 3px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: rgba(6, 16, 30, 0.72);
+}
+
+.hudModeBtn {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #9ec4e8;
+  background: transparent;
+  cursor: pointer;
+}
+
+.hudModeBtn.active {
+  color: #fff;
+  background: var(--ui-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--ui-accent);
+}
+
+.hudModeBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .hudScreen.duoModeOpen {
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -2205,6 +2238,42 @@ button:disabled {
   gap: 14px;
   padding: 8px 4px 16px;
   box-sizing: border-box;
+}
+
+.duoFlowHint {
+  margin: 0;
+  font-size: 12px;
+  color: #8fb8dc;
+  text-align: center;
+}
+
+.duoTopicChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.duoTopicChip {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.duoCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #d0e6fb;
+}
+
+.duoBlockedNote {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #ffd4a8;
+  background: rgba(255, 140, 40, 0.12);
+  border: 1px solid rgba(255, 180, 80, 0.35);
 }
 
 .duoOrbRow {
@@ -2273,7 +2342,7 @@ button:disabled {
 
 .duoTranscript {
   width: min(720px, 100%);
-  max-height: 180px;
+  max-height: min(240px, 30vh);
   overflow-y: auto;
   border: 1px solid var(--ui-border);
   border-radius: 10px;

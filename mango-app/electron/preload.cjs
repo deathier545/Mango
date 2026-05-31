@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("mango", {
   stop: () => ipcRenderer.invoke("mango:stop"),
   sendText: (text, history) => ipcRenderer.invoke("mango:send-text", text, history || []),
   runDuo: (payload) => ipcRenderer.invoke("mango:run-duo", payload || {}),
+  stopDuo: () => ipcRenderer.invoke("mango:stop-duo"),
   openLogsFolder: () => ipcRenderer.invoke("mango:open-logs-folder"),
   copyDiagnostics: () => ipcRenderer.invoke("mango:copy-diagnostics"),
   saveUsageReport: (kind, content) =>
@@ -19,6 +20,7 @@ contextBridge.exposeInMainWorld("mango", {
   smartCardAdd: (payload) => ipcRenderer.invoke("mango:smart-card-add", payload),
   smartCardDelete: (cardId) => ipcRenderer.invoke("mango:smart-card-delete", cardId),
   smartInboxAdd: (text) => ipcRenderer.invoke("mango:smart-inbox-add", text),
+  bridgeVersion: 2,
   onEvent: (cb) => {
     if (typeof cb !== "function") return () => {};
     const handler = (_event, payload) => cb(payload);

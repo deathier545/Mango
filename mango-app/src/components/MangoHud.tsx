@@ -28,18 +28,23 @@ type MangoHudProps = {
   latestToolEvent: ToolEvent | null
   onQuickPrompt: (text: string) => void
   duoMode: boolean
+  duoAvailable: boolean
   onEnterDuo: () => void
+  onExitDuo: () => void
   duoEnabled: boolean
   mangoDuoState: OrbState
   amberDuoState: OrbState
   duoTopic: string
   duoRounds: number
+  duoSpeak: boolean
   duoRunning: boolean
+  duoBlocked: boolean
   duoLines: DuoLine[]
   onDuoTopicChange: (topic: string) => void
   onDuoRoundsChange: (rounds: number) => void
+  onDuoSpeakChange: (speak: boolean) => void
   onStartDuo: () => void
-  onExitDuo: () => void
+  onStopDuo: () => void
   mangoDuoAudioRef: RefObject<number>
   amberDuoAudioRef: RefObject<number>
 }
@@ -83,18 +88,23 @@ export function MangoHud({
 
   onQuickPrompt,
   duoMode,
+  duoAvailable,
   onEnterDuo,
+  onExitDuo,
   duoEnabled,
   mangoDuoState,
   amberDuoState,
   duoTopic,
   duoRounds,
+  duoSpeak,
   duoRunning,
+  duoBlocked,
   duoLines,
   onDuoTopicChange,
   onDuoRoundsChange,
+  onDuoSpeakChange,
   onStartDuo,
-  onExitDuo,
+  onStopDuo,
   mangoDuoAudioRef,
   amberDuoAudioRef,
 }: MangoHudProps) {
@@ -150,6 +160,33 @@ export function MangoHud({
 
 
 
+      {!showMap ? (
+        <div className="hudModeToggle" role="tablist" aria-label="Mango display mode">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={!duoMode}
+            className={`hudModeBtn${!duoMode ? ' active' : ''}`}
+            onClick={() => {
+              if (duoMode) void onExitDuo()
+            }}
+          >
+            Solo
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={duoMode}
+            className={`hudModeBtn${duoMode ? ' active' : ''}`}
+            onClick={onEnterDuo}
+            disabled={duoMode}
+            title={duoAvailable ? undefined : 'Requires Mango Console (Electron)'}
+          >
+            Duo
+          </button>
+        </div>
+      ) : null}
+
       {hasQuickBar ? (
 
         <div className="mangoQuickActions">
@@ -174,20 +211,8 @@ export function MangoHud({
 
           ))}
 
-          <button type="button" className="btnSecondary" onClick={onEnterDuo}>
-            Duo panel
-          </button>
-
         </div>
 
-      ) : null}
-
-      {!showMap && !duoMode && !hasQuickBar ? (
-        <div className="mangoQuickActions">
-          <button type="button" className="btnSecondary" onClick={onEnterDuo}>
-            Duo panel
-          </button>
-        </div>
       ) : null}
 
       <div className="hudSceneStack">
@@ -245,16 +270,21 @@ export function MangoHud({
           {duoMode ? (
             <DuoScene
               enabled={duoEnabled}
+              duoAvailable={duoAvailable}
               mangoState={mangoDuoState}
               amberState={amberDuoState}
               topic={duoTopic}
               rounds={duoRounds}
+              speak={duoSpeak}
               running={duoRunning}
+              duoBlocked={duoBlocked}
               lines={duoLines}
               onTopicChange={onDuoTopicChange}
               onRoundsChange={onDuoRoundsChange}
+              onSpeakChange={onDuoSpeakChange}
               onStart={onStartDuo}
-              onExit={onExitDuo}
+              onStop={onStopDuo}
+              onExit={() => void onExitDuo()}
               mangoAudioRef={mangoDuoAudioRef}
               amberAudioRef={amberDuoAudioRef}
             />

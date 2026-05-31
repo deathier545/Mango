@@ -17,6 +17,7 @@ function registerIpcHandlers(deps) {
     stopMango,
     runManualTextTurn,
     runDuoChat,
+    stopDuoChat,
     runSmartCmd,
     buildDiagnostics,
   } = deps;
@@ -30,6 +31,7 @@ function registerIpcHandlers(deps) {
   ipcMain.handle("mango:stop", wrapIpcSync(() => stopMango()));
   ipcMain.handle("mango:send-text", wrapIpcAsync((_event, text, history) => runManualTextTurn(text, history)));
   ipcMain.handle("mango:run-duo", wrapIpcAsync((_event, payload) => runDuoChat(payload || {})));
+  ipcMain.handle("mango:stop-duo", wrapIpcSync(() => stopDuoChat()));
   ipcMain.handle(
     "mango:open-logs-folder",
     wrapIpcAsync(async () => {

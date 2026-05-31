@@ -1,8 +1,19 @@
 import { useRef, type RefObject } from 'react'
 
+import { duoUnavailableMessage } from '../lib/mango-bridge'
+
 import { useOrbCanvas } from '../hooks/useOrbCanvas'
 import { AMBER_ORB_TARGETS, ORB_TARGETS } from '../orb/orbConfig'
 import type { OrbState } from '../types/ui'
+
+const DUO_TOPIC_CHIPS = [
+  'AI personalities',
+  'Plan my day',
+  'Gaming strategy',
+  'Debate both sides',
+  'Explain a topic',
+  'Relationship advice',
+] as const
 
 type DuoOrbUnitProps = {
   label: string
@@ -48,15 +59,20 @@ export type DuoLine = {
 
 type DuoSceneProps = {
   enabled: boolean
+  duoAvailable: boolean
   mangoState: OrbState
   amberState: OrbState
   topic: string
   rounds: number
+  speak: boolean
   running: boolean
+  duoBlocked: boolean
   lines: DuoLine[]
   onTopicChange: (topic: string) => void
   onRoundsChange: (rounds: number) => void
+  onSpeakChange: (speak: boolean) => void
   onStart: () => void
+  onStop: () => void
   onExit: () => void
   mangoAudioRef: RefObject<number>
   amberAudioRef: RefObject<number>
@@ -64,15 +80,20 @@ type DuoSceneProps = {
 
 export function DuoScene({
   enabled,
+  duoAvailable,
   mangoState,
   amberState,
   topic,
   rounds,
+  speak,
   running,
+  duoBlocked,
   lines,
   onTopicChange,
   onRoundsChange,
+  onSpeakChange,
   onStart,
+  onStop,
   onExit,
   mangoAudioRef,
   amberAudioRef,
@@ -84,6 +105,10 @@ export function DuoScene({
 
   return (
     <div className="duoScene">
+      <p className="duoFlowHint" role="status">
+        Mango opens → Amber responds → repeats for {rounds} round{rounds === 1 ? '' : 's'}
+      </p>
+
       <div className="duoOrbRow">
         <DuoOrbUnit
           label="Mango"
@@ -107,8 +132,18 @@ export function DuoScene({
 
       <div className="duoControls panel">
         <p className="panelSub">
-          Duo panel — Mango and Amber take turns discussing a topic you choose. Mango opens; Amber responds.
+          Mango and Amber discuss a topic you choose. Mango speaks first; Amber responds each round.
         </p>
+        {!duoAvailable ? (
+          <p className="duoBlockedNote" role="alert">
+            {duoUnavailableMessage()}
+          </p>
+        ) : null}
+        {duoBlocked ? (
+          <p className="duoBlockedNote" role="alert">
+            Duo works best when Mango is idle. Wait for voice playback to finish or stop Mango first.
+          </p>
+        ) : null}
         <label className="duoTopicLabel">
           Topic
           <input
@@ -117,8 +152,22 @@ export function DuoScene({
             onChange={(e) => onTopicChange(e.target.value)}
             placeholder="e.g. Should AI assistants have personalities?"
             disabled={running}
+            maxLength={300}
           />
         </label>
+        <div className="duoTopicChips">
+          {DUO_TOPIC_CHIPS.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              className="btnSecondary duoTopicChip"
+              disabled={running}
+              onClick={() => onTopicChange(chip)}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
         <label className="duoTopicLabel">
           Rounds (each = Mango + Amber)
           <select
@@ -134,9 +183,26 @@ export function DuoScene({
             ))}
           </select>
         </label>
+        <label className="duoCheck">
+          <input
+            type="checkbox"
+            checked={speak}
+            onChange={(e) => onSpeakChange(e.target.checked)}
+            disabled={running}
+          />
+          Speak out loud
+        </label>
         <div className="duoControlActions">
-          <button type="button" className="btnPrimary" onClick={onStart} disabled={running || !topic.trim()}>
+          <button
+            type="button"
+            className="btnPrimary"
+            onClick={onStart}
+            disabled={running || duoBlocked || !duoAvailable || !topic.trim()}
+          >
             {running ? 'Conversation running…' : 'Start duo conversation'}
+          </button>
+          <button type="button" className="btnDanger" onClick={onStop} disabled={!running}>
+            Stop duo
           </button>
           <button type="button" className="btnSecondary" onClick={onExit} disabled={running}>
             Solo Mango

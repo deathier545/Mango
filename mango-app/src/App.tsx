@@ -22,6 +22,7 @@ import { useDiscordBridgeStatus } from './hooks/useDiscordBridgeStatus'
 import { usePageVisible } from './hooks/usePageVisible'
 import { useDuoChat } from './hooks/useDuoChat'
 import { useMangoBridge } from './hooks/useMangoBridge'
+import { unwrapIpcData } from './lib/ipc-unpack'
 import type { AppView, DiagSubView, OrbState } from './types/ui'
 
 function App() {
@@ -61,7 +62,6 @@ function App() {
   const globeHandlers = useMemo(() => ({ onGlobeOpen }), [onGlobeOpen])
 
   const mango = useMangoBridge(notify, globeHandlers)
-  const duo = useDuoChat(notify)
 
   const {
     status,
@@ -123,6 +123,13 @@ function App() {
   }, [assistantState, status.running, lastErrorAt])
 
   orbStateRef.current = orbState
+
+  const duoBlocked = useMemo(
+    () => status.running && !['idle', 'listening', 'stopped'].includes(orbState),
+    [status.running, orbState],
+  )
+
+  const duo = useDuoChat(notify, duoBlocked)
 
   const orbEnabled = activeView === 'mango' && pageVisible && !duo.duoMode
   useOrbCanvas(orbEnabled, orbState, orbWrapRef, orbCanvasRef, audioLevelRef, orbStateRef)
@@ -249,7 +256,7 @@ function App() {
       setManualSending(true)
       setAssistantState('thinking')
       try {
-        const res = await window.mango.sendText(text, submitHistory)
+        const res = unwrapIpcData(await window.mango.sendText(text, submitHistory))
         if (pendingChatRequestRef.current !== requestId) return
         if (!res.ok) {
           throw new Error(res.error || 'No response from manual text bridge.')
@@ -434,18 +441,23 @@ function App() {
             latestToolEvent={toolEvents[toolEvents.length - 1] ?? null}
             onQuickPrompt={setPromptDraft}
             duoMode={duo.duoMode}
+            duoAvailable={duo.duoAvailable}
             onEnterDuo={duo.enterDuoMode}
             duoEnabled={activeView === 'mango' && pageVisible}
             mangoDuoState={duo.mangoDuoState}
             amberDuoState={duo.amberDuoState}
             duoTopic={duo.duoTopic}
             duoRounds={duo.duoRounds}
+            duoSpeak={duo.duoSpeak}
             duoRunning={duo.duoRunning}
+            duoBlocked={duo.duoBlocked}
             duoLines={duo.duoLines}
             onDuoTopicChange={duo.setDuoTopic}
             onDuoRoundsChange={duo.setDuoRounds}
+            onDuoSpeakChange={duo.setDuoSpeak}
             onStartDuo={() => void duo.startDuo()}
-            onExitDuo={duo.exitDuoMode}
+            onStopDuo={() => void duo.stopDuo()}
+            onExitDuo={() => void duo.exitDuoMode()}
             mangoDuoAudioRef={duo.mangoAudioRef}
             amberDuoAudioRef={duo.amberAudioRef}
           />

@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { DuoLine } from '../components/DuoScene'
+import { duoUnavailableMessage, hasDuoBridge } from '../lib/mango-bridge'
 import { unwrapIpcData } from '../lib/ipc-unpack'
 import type { OrbState } from '../types/ui'
 
 type NotifyFn = (message: string, kind?: 'info' | 'success' | 'error') => void
+
+const MAX_DUO_TOPIC = 300
 
 function phaseToOrbState(phase: string): OrbState {
   if (phase === 'thinking') return 'thinking'
@@ -13,10 +16,19 @@ function phaseToOrbState(phase: string): OrbState {
   return 'listening'
 }
 
-export function useDuoChat(notify: NotifyFn) {
+function mapDuoLines(raw: Array<{ speaker?: string; text?: string }> | undefined): DuoLine[] {
+  if (!raw?.length) return []
+  return raw.map((line) => ({
+    speaker: line.speaker === 'amber' ? 'amber' : 'mango',
+    text: String(line.text || ''),
+  }))
+}
+
+export function useDuoChat(notify: NotifyFn, duoBlocked: boolean) {
   const [duoMode, setDuoMode] = useState(false)
   const [duoTopic, setDuoTopic] = useState('')
   const [duoRounds, setDuoRounds] = useState(2)
+  const [duoSpeak, setDuoSpeak] = useState(true)
   const [duoRunning, setDuoRunning] = useState(false)
   const [duoLines, setDuoLines] = useState<DuoLine[]>([])
   const [mangoDuoState, setMangoDuoState] = useState<OrbState>('idle')
@@ -25,20 +37,28 @@ export function useDuoChat(notify: NotifyFn) {
   const mangoAudioRef = useRef(0)
   const amberAudioRef = useRef(0)
 
+  const setTopicLimited = useCallback((topic: string) => {
+    setDuoTopic(topic.slice(0, MAX_DUO_TOPIC))
+  }, [])
+
   useEffect(() => {
     if (!window.mango) return
     const unsub = window.mango.onEvent((event) => {
       if (event.type !== 'parsed') return
       const p = event.payload
+      if (p.kind === 'duo_done') {
+        if (p.lines?.length) setDuoLines(mapDuoLines(p.lines))
+        return
+      }
       if (p.kind !== 'duo_phase') return
       const speaker = p.speaker === 'amber' ? 'amber' : 'mango'
       const phase = phaseToOrbState(p.phase)
       if (speaker === 'amber') {
         setAmberDuoState(phase)
-        if (phase === 'speaking') amberAudioRef.current = 0.35
+        amberAudioRef.current = phase === 'speaking' ? 0.35 : 0
       } else {
         setMangoDuoState(phase)
-        if (phase === 'speaking') mangoAudioRef.current = 0.35
+        mangoAudioRef.current = phase === 'speaking' ? 0.35 : 0
       }
       if (p.text && p.phase === 'speaking') {
         setDuoLines((prev) => {
@@ -53,9 +73,20 @@ export function useDuoChat(notify: NotifyFn) {
     }
   }, [])
 
+  const resetDuoVisual = useCallback(() => {
+    setMangoDuoState('idle')
+    setAmberDuoState('idle')
+    mangoAudioRef.current = 0
+    amberAudioRef.current = 0
+  }, [])
+
   const startDuo = useCallback(async () => {
-    if (!window.mango?.runDuo) {
-      notify('Duo mode requires the Electron app.', 'error')
+    if (!hasDuoBridge()) {
+      notify(duoUnavailableMessage(), 'error')
+      return
+    }
+    if (duoBlocked) {
+      notify('Duo works best when Mango is idle. Wait for voice playback to finish or stop Mango.', 'error')
       return
     }
     const topic = duoTopic.trim()
@@ -71,59 +102,70 @@ export function useDuoChat(notify: NotifyFn) {
     notify('Starting duo conversation…', 'info')
     try {
       const result = unwrapIpcData(
-        await window.mango.runDuo({ topic, rounds: duoRounds, speak: true }),
+        await window.mango.runDuo({ topic, rounds: duoRounds, speak: duoSpeak }),
       )
       if (!result.ok) {
         throw new Error(result.error || 'Duo conversation failed.')
       }
       if (result.lines?.length) {
-        setDuoLines(
-          result.lines.map((line) => ({
-            speaker: line.speaker === 'amber' ? 'amber' : 'mango',
-            text: line.text,
-          })),
-        )
+        setDuoLines(mapDuoLines(result.lines))
       }
       notify('Duo conversation finished.', 'success')
     } catch (err) {
-      notify(`Duo conversation failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!msg.toLowerCase().includes('cancel')) {
+        notify(`Duo conversation failed: ${msg}`, 'error')
+      } else {
+        notify('Duo conversation stopped.', 'info')
+      }
     } finally {
       duoRunningRef.current = false
       setDuoRunning(false)
-      setMangoDuoState('idle')
-      setAmberDuoState('idle')
-      mangoAudioRef.current = 0
-      amberAudioRef.current = 0
+      resetDuoVisual()
     }
-  }, [duoTopic, duoRounds, notify])
+  }, [duoTopic, duoRounds, duoSpeak, duoBlocked, notify, resetDuoVisual])
+
+  const stopDuo = useCallback(async () => {
+    if (!window.mango?.stopDuo) return
+    try {
+      unwrapIpcData(await window.mango.stopDuo())
+    } catch {
+      // process exit will settle startDuo promise
+    }
+  }, [])
 
   const enterDuoMode = useCallback(() => {
     setDuoMode(true)
-    setMangoDuoState('idle')
-    setAmberDuoState('idle')
-  }, [])
+    resetDuoVisual()
+  }, [resetDuoVisual])
 
-  const exitDuoMode = useCallback(() => {
-    if (duoRunningRef.current) return
+  const exitDuoMode = useCallback(async () => {
+    if (duoRunningRef.current) {
+      await stopDuo()
+    }
     setDuoMode(false)
     setDuoLines([])
-    setMangoDuoState('idle')
-    setAmberDuoState('idle')
-  }, [])
+    resetDuoVisual()
+  }, [resetDuoVisual, stopDuo])
 
   return {
     duoMode,
+    duoAvailable: hasDuoBridge(),
     duoTopic,
-    setDuoTopic,
+    setDuoTopic: setTopicLimited,
     duoRounds,
     setDuoRounds,
+    duoSpeak,
+    setDuoSpeak,
     duoRunning,
     duoLines,
     mangoDuoState,
     amberDuoState,
     mangoAudioRef,
     amberAudioRef,
+    duoBlocked,
     startDuo,
+    stopDuo,
     enterDuoMode,
     exitDuoMode,
   }

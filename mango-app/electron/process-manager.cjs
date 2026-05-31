@@ -59,6 +59,7 @@ function createProcessManager({
 }) {
   let mangoProc = null;
   let startedAt = null;
+  let duoProc = null;
 
   function mangoChildEnv(cfg) {
     const interruptProfile = String(cfg.interruptProfile || defaultSettings.interruptProfile).toLowerCase();
@@ -277,7 +278,11 @@ function createProcessManager({
 
   function runDuoChat(payload = {}) {
     return new Promise((resolve) => {
-      const topic = String(payload.topic || "").trim();
+      if (duoProc && isProcessAlive(duoProc)) {
+        resolve({ ok: false, error: "A duo conversation is already running." });
+        return;
+      }
+      const topic = String(payload.topic || "").trim().slice(0, 300);
       if (!topic) {
         resolve({ ok: false, error: "Empty topic." });
         return;
@@ -286,18 +291,20 @@ function createProcessManager({
       const speak = payload.speak !== false;
       const py = pythonExecPath(workspaceRoot, appRoot);
       const cfg = loadSettings();
-      const proc = spawn(py, ["-m", "mango.duo_chat_cli"], {
+      duoProc = spawn(py, ["-m", "mango.duo_chat_cli"], {
         cwd: workspaceRoot,
         env: mangoChildEnv(cfg),
         windowsHide: true,
         stdio: ["pipe", "pipe", "pipe"],
       });
+      const proc = duoProc;
 
       let out = "";
       let err = "";
       let outLeft = "";
       let errLeft = "";
       let finished = false;
+      let cancelled = false;
       let timeout = null;
       const DUO_INACTIVITY_MS = 600000;
       const armTimeout = () => {
@@ -314,6 +321,7 @@ function createProcessManager({
       const done = (result) => {
         if (finished) return;
         finished = true;
+        duoProc = null;
         if (timeout) {
           clearTimeout(timeout);
           timeout = null;
@@ -371,7 +379,12 @@ function createProcessManager({
       proc.on("error", (e) => {
         done({ ok: false, error: `Duo process failed: ${e.message}` });
       });
-      proc.on("exit", () => {
+      proc.on("exit", (code, signal) => {
+        duoProc = null;
+        if (cancelled) {
+          done({ ok: false, error: "Duo conversation cancelled.", lines: [] });
+          return;
+        }
         const parsed = parseResultLine();
         if (parsed) {
           done(parsed);
@@ -382,13 +395,31 @@ function createProcessManager({
       });
       armTimeout();
 
+      proc._duoCancelled = () => {
+        cancelled = true;
+      };
+
       try {
         proc.stdin.write(JSON.stringify({ topic, rounds, speak }));
         proc.stdin.end();
       } catch {
+        duoProc = null;
         done({ ok: false, error: "Could not submit duo request." });
       }
     });
+  }
+
+  function stopDuoChat() {
+    if (!duoProc || !isProcessAlive(duoProc)) {
+      duoProc = null;
+      return { stopped: false };
+    }
+    if (typeof duoProc._duoCancelled === "function") {
+      duoProc._duoCancelled();
+    }
+    terminateMangoProcessTree(duoProc);
+    duoProc = null;
+    return { stopped: true };
   }
 
   function runSmartCmd(args) {
@@ -417,6 +448,7 @@ function createProcessManager({
     stopMango,
     runManualTextTurn,
     runDuoChat,
+    stopDuoChat,
     runSmartCmd,
     mangoChildEnv,
     getMangoProc: () => mangoProc,
