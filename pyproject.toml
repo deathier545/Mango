@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mango-voice-assistant"
+version = "0.1.0"
+description = "Push-to-talk voice assistant for Windows (Whisper, Groq/Ollama, Edge TTS)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.14.0",
+    "mypy>=1.18.0",
+    "pre-commit>=4.0.0",
+    "types-requests>=2.32.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mango*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,0 +1,58 @@
+## Mango wake word — openWakeWord train.py config
+## Phrase: "mango" (not "hey mango")
+##
+## Colab simple UI          →  YAML field here
+## number_of_examples       →  n_samples
+## number_of_training_steps →  steps
+## false_activation_penalty →  max_negative_weight
+
+model_name: "mango"
+
+target_phrase:
+  - "mango"
+
+custom_negative_phrases: []
+
+# 30,000 positive clips (your Colab setting; 30k–50k is often best)
+n_samples: 30000
+# ~20% validation clips for early stopping
+n_samples_val: 6000
+
+tts_batch_size: 50
+augmentation_batch_size: 16
+
+piper_sample_generator_path: "./piper-sample-generator"
+piper_model: "./piper-sample-generator/models/en_US-libritts_r-medium.pt"
+output_dir: "./output/mango"
+
+rir_paths:
+  - "./data/mit_rirs"
+
+background_paths:
+  - "./data/fma"
+
+background_paths_duplication_rate:
+  - 1
+
+false_positive_validation_data_path: "./data/validation_set_features.npy"
+
+augmentation_rounds: 1
+
+feature_data_files:
+  # Use acav_complete.npy (run scripts/finalize-acav.ps1 after download)
+  "ACAV100M_sample": "./data/acav_complete.npy"
+
+batch_n_per_class:
+  "ACAV100M_sample": 1024
+  "adversarial_negative": 50
+  "positive": 50
+
+model_type: "dnn"
+layer_size: 32
+
+# 20,000 training steps (your Colab setting)
+steps: 20000
+
+# false_activation_penalty = 1500 (default)
+max_negative_weight: 1500
+target_false_positives_per_hour: 0.2

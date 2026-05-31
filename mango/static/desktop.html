@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mango</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #02050d;
+      color: #dffcff;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    #globeHost {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      opacity: 1;
+      transition: opacity 420ms ease;
+      background: radial-gradient(ellipse 70% 60% at 50% 45%, #081423 0%, #010309 78%);
+    }
+    #globeViz {
+      width: 100%;
+      height: 100%;
+    }
+    #hudGrid {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.28;
+      transition: opacity 420ms ease;
+      background-image:
+        linear-gradient(rgba(0, 230, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 230, 255, 0.05) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 78% 70% at 50% 48%, black 18%, transparent 78%);
+    }
+    #hudVignette {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 420ms ease;
+      background: radial-gradient(ellipse at center, transparent 44%, rgba(0, 0, 0, 0.44) 100%);
+    }
+    #hint {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 8;
+      pointer-events: none;
+      color: rgba(165, 240, 255, 0.52);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-shadow: 0 0 12px rgba(0, 220, 255, 0.35);
+      transition: opacity 280ms ease;
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 38px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 12;
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background: rgba(5, 18, 30, 0.74);
+      border: 1px solid rgba(0, 220, 255, 0.28);
+      box-shadow: 0 0 24px rgba(0, 180, 255, 0.13);
+      backdrop-filter: blur(10px);
+      transition: opacity 280ms ease;
+    }
+    #toolbar button {
+      border: 1px solid rgba(0, 220, 255, 0.35);
+      border-radius: 3px;
+      background: rgba(0, 35, 50, 0.65);
+      color: #c9f8ff;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+    #toolbar button:hover {
+      background: rgba(0, 90, 110, 0.5);
+      border-color: rgba(140, 240, 255, 0.58);
+    }
+
+    #mangoDock {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 20;
+      width: min(315px, calc(100vw - 36px));
+      max-height: 48vh;
+      overflow-y: auto;
+      padding: 12px 12px 14px;
+      background: rgba(4, 14, 24, 0.84);
+      border: 1px solid rgba(0, 220, 255, 0.2);
+      border-radius: 8px;
+      box-shadow: 0 0 40px rgba(0, 170, 230, 0.15);
+      backdrop-filter: blur(14px);
+      transition:
+        right 420ms ease,
+        bottom 420ms ease,
+        width 420ms ease,
+        transform 420ms ease,
+        background 420ms ease,
+        box-shadow 420ms ease,
+        border-color 420ms ease;
+    }
+
+    #mangoBallWrap {
+      margin: 0 auto 10px;
+      width: 140px;
+      height: 140px;
+      position: relative;
+      transition: width 420ms ease, height 420ms ease;
+    }
+    #mangoBall {
+      width: 100%;
+      height: 100%;
+      display: block;
+      filter: drop-shadow(0 0 16px rgba(255, 70, 60, 0.42));
+    }
+
+    #mangoDock .sub {
+      margin: 0 0 8px;
+      color: rgba(160, 210, 230, 0.74);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      line-height: 1.45;
+    }
+    #status {
+      min-height: 32px;
+      padding: 8px 9px;
+      margin-bottom: 6px;
+      color: rgba(195, 240, 255, 0.9);
+      font-size: 10px;
+      border: 1px solid rgba(0, 220, 255, 0.15);
+      border-radius: 4px;
+      background: rgba(0, 42, 62, 0.32);
+      letter-spacing: 0.03em;
+    }
+    #placeLabel {
+      color: #ebffff;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      word-break: break-word;
+    }
+    #searchRow {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    #q {
+      flex: 1;
+      min-width: 0;
+      padding: 7px 9px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 220, 255, 0.22);
+      background: rgba(0, 22, 36, 0.65);
+      color: #ecffff;
+      font-size: 12px;
+    }
+    #q::placeholder { color: rgba(140, 200, 220, 0.46); }
+    #searchBtn {
+      padding: 7px 10px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 220, 255, 0.42);
+      background: rgba(0, 90, 110, 0.42);
+      color: #e4feff;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    #coords {
+      color: rgba(140, 220, 240, 0.78);
+      font-size: 10px;
+      margin-bottom: 7px;
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    }
+    .dock-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .dock-actions button {
+      padding: 6px 9px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 220, 255, 0.3);
+      background: rgba(0, 36, 56, 0.55);
+      color: #ceefff;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+
+    body.ai-listening #mangoDock {
+      border-color: rgba(0, 220, 255, 0.24);
+      box-shadow: 0 0 34px rgba(0, 170, 230, 0.16);
+    }
+    body.ai-thinking #mangoDock {
+      border-color: rgba(190, 120, 255, 0.30);
+      box-shadow: 0 0 42px rgba(160, 90, 255, 0.24);
+    }
+    body.ai-speaking #mangoDock {
+      border-color: rgba(255, 110, 90, 0.34);
+      box-shadow: 0 0 44px rgba(255, 80, 60, 0.26);
+    }
+
+    /* Default "normal Mango" mode: no globe, large center ball card. */
+    body.normal-mode #globeHost,
+    body.normal-mode #hudGrid,
+    body.normal-mode #hudVignette,
+    body.normal-mode #hint,
+    body.normal-mode #toolbar {
+      opacity: 0;
+      pointer-events: none;
+    }
+    body.normal-mode #mangoDock {
+      right: 50%;
+      bottom: 50%;
+      transform: translate(50%, 50%);
+      width: min(72vmin, 760px);
+      max-height: none;
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      overflow: visible;
+    }
+    body.normal-mode #mangoBallWrap {
+      width: min(58vmin, 620px);
+      height: min(58vmin, 620px);
+      margin: 0 auto 14px;
+    }
+    body.normal-mode #status {
+      width: min(62vmin, 520px);
+      margin: 0 auto;
+      border-color: rgba(0, 220, 255, 0.18);
+      background: rgba(0, 34, 52, 0.42);
+    }
+    body.normal-mode .sub,
+    body.normal-mode #placeLabel,
+    body.normal-mode #searchRow,
+    body.normal-mode #coords,
+    body.normal-mode .dock-actions {
+      display: none;
+    }
+  </style>
+</head>
+<body class="normal-mode">
+  <div id="globeHost"><div id="globeViz"></div></div>
+  <div id="hudGrid" aria-hidden="true"></div>
+  <div id="hudVignette" aria-hidden="true"></div>
+  <div id="hint">Wireframe globe · drag orbit · scroll zoom</div>
+
+  <div id="toolbar">
+    <button type="button" id="zoomIn">+ Zoom</button>
+    <button type="button" id="zoomOut">- Zoom</button>
+    <button type="button" id="resetView">Reset</button>
+    <button type="button" id="openOsm">OSM</button>
+  </div>
+
+  <aside id="mangoDock">
+    <div id="mangoBallWrap"><canvas id="mangoBall"></canvas></div>
+    <p class="sub">Mango globe mode: ask for a place, then say "return to normal".</p>
+    <div id="status">Mango standing by.</div>
+    <div id="placeLabel"></div>
+    <div id="searchRow">
+      <input id="q" type="search" placeholder="Locate..." autocomplete="off" />
+      <button type="button" id="searchBtn">Go</button>
+    </div>
+    <div id="coords">-</div>
+    <div class="dock-actions">
+      <button type="button" id="copyBtn">Copy</button>
+      <button type="button" id="btnQuit">Quit</button>
+    </div>
+  </aside>
+
+  <script src="https://unpkg.com/globe.gl"></script>
+  <script>
+    const WORLD_URL =
+      "https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/DATA/world.geojson";
+    const US_STATES_URL =
+      "https://cdn.jsdelivr.net/gh/PublicaMundi/MappingAPI@master/data/geojson/us-states.json";
+
+    let globe = null;
+    let ready = false;
+    let globeVisible = false;
+    let aiState = "listening";
+    let lastLat = 20;
+    let lastLng = 0;
+    let pendingFly = null;
+    let wirePolys = [];
+    let wirePulse = 0;
+    let flightArcs = [];
+    let ringBlips = [];
+
+    const ALT_MIN = 0.06;
+    const ALT_MAX = 5.2;
+
+    // ---------- Mango ball (single-screen replacement for separate HUD window) ----------
+    const ballCanvas = document.getElementById("mangoBall");
+    const ballCtx = ballCanvas.getContext("2d");
+    const ballPts = [];
+    for (let i = 0; i < 280; i += 1) {
+      const y = 1 - (2 * i + 1) / 280;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const th = i * 2.399963;
+      ballPts.push([Math.cos(th) * r, y, Math.sin(th) * r]);
+    }
+
+    function drawMangoBall(ts) {
+      const rect = ballCanvas.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      const w = Math.max(10, Math.floor(rect.width * dpr));
+      const h = Math.max(10, Math.floor(rect.height * dpr));
+      if (ballCanvas.width !== w || ballCanvas.height !== h) {
+        ballCanvas.width = w;
+        ballCanvas.height = h;
+      }
+      ballCtx.clearRect(0, 0, w, h);
+      const cx = w * 0.5;
+      const cy = h * 0.5;
+      const rr = Math.min(w, h) * 0.34;
+      const t = ts * 0.001;
+      const ry = t * 0.55;
+      const rx = Math.sin(t * 0.4) * 0.4;
+
+      // subtle shell
+      ballCtx.beginPath();
+      ballCtx.arc(cx, cy, rr * 1.02, 0, Math.PI * 2);
+      ballCtx.strokeStyle = "rgba(255,80,70,0.16)";
+      ballCtx.lineWidth = Math.max(1, dpr);
+      ballCtx.stroke();
+
+      const dots = [];
+      for (const [x0, y0, z0] of ballPts) {
+        const c = Math.cos(ry), s = Math.sin(ry);
+        let x = c * x0 + s * z0;
+        let y = y0;
+        let z = -s * x0 + c * z0;
+        const cxr = Math.cos(rx), sxr = Math.sin(rx);
+        const y2 = cxr * y - sxr * z;
+        const z2 = sxr * y + cxr * z;
+        y = y2;
+        z = z2;
+        dots.push({ x, y, z });
+      }
+      dots.sort((a, b) => a.z - b.z);
+      for (const p of dots) {
+        const sx = cx + p.x * rr;
+        const sy = cy + p.y * rr * 0.96;
+        const shade = 0.38 + 0.62 * ((p.z + 1) * 0.5);
+        const rad = Math.max(1 * dpr, (1.2 + 1.5 * shade) * dpr);
+        const r = Math.floor(190 + 60 * shade);
+        const g = Math.floor(24 + 10 * shade);
+        const b = Math.floor(22 + 10 * shade);
+        ballCtx.beginPath();
+        ballCtx.arc(sx, sy, rad, 0, Math.PI * 2);
+        ballCtx.fillStyle = `rgb(${r},${g},${b})`;
+        ballCtx.fill();
+      }
+      requestAnimationFrame(drawMangoBall);
+    }
+    requestAnimationFrame(drawMangoBall);
+
+    // ---------- Globe UI state ----------
+    function mangoSetGlobeVisible(visible) {
+      globeVisible = !!visible;
+      document.body.classList.toggle("normal-mode", !globeVisible);
+      if (!globeVisible) {
+        setStatus("Mango standing by.");
+      }
+    }
+
+    function setStatus(t) {
+      const s = document.getElementById("status");
+      if (s) s.textContent = t;
+    }
+
+    function _statusForState(s) {
+      if (s === "speaking") return "Mango speaking...";
+      if (s === "thinking") return "Mango thinking...";
+      return "Mango listening.";
+    }
+
+    function _themeForState() {
+      if (aiState === "speaking") {
+        return {
+          atmosphere: "#ff7d66",
+          graticule: "rgba(255,150,120,0.22)",
+          countryStroke: "rgba(255,170,140,0.56)",
+          stateStroke: "rgba(255,210,190,0.90)",
+          arcFrom: "rgba(255,170,140,0.18)",
+          arcTo: "rgba(255,240,232,0.95)",
+          point: "#ffc7ae",
+          ring: "rgba(255,186,160,0.9)",
+        };
+      }
+      if (aiState === "thinking") {
+        return {
+          atmosphere: "#b085ff",
+          graticule: "rgba(180,140,255,0.22)",
+          countryStroke: "rgba(176,142,255,0.52)",
+          stateStroke: "rgba(226,210,255,0.86)",
+          arcFrom: "rgba(176,142,255,0.18)",
+          arcTo: "rgba(240,230,255,0.95)",
+          point: "#d8bfff",
+          ring: "rgba(208,184,255,0.88)",
+        };
+      }
+      return {
+        atmosphere: "#36e5ff",
+        graticule: "rgba(0,220,245,0.18)",
+        countryStroke: "rgba(0,205,235,0.46)",
+        stateStroke: "rgba(125,245,255,0.80)",
+        arcFrom: "rgba(0,220,245,0.16)",
+        arcTo: "rgba(210,252,255,0.94)",
+        point: "#5ef7ff",
+        ring: "rgba(140,245,255,0.86)",
+      };
+    }
+
+    function mangoSetAiState(state) {
+      const s = String(state || "").toLowerCase();
+      if (!["listening", "thinking", "speaking"].includes(s)) return;
+      aiState = s;
+      document.body.classList.remove("ai-listening", "ai-thinking", "ai-speaking");
+      document.body.classList.add("ai-" + aiState);
+      if (!globeVisible) {
+        setStatus(_statusForState(aiState));
+      }
+      applyWireframePolys();
+      applyArcAndRingLayers();
+      applyStateVisuals();
+    }
+
+    function applyStateVisuals() {
+      if (!globe) return;
+      const t = _themeForState();
+      try {
+        globe.atmosphereColor(t.atmosphere);
+        globe.graticulesColor(() => t.graticule);
+      } catch {}
+      try {
+        const c = globe.controls && globe.controls();
+        if (c) c.autoRotate = aiState === "thinking";
+      } catch {}
+    }
+
+    function setCoordsText(lat, lng) {
+      const el = document.getElementById("coords");
+      if (el) el.textContent = `LAT ${lat.toFixed(5)}   LNG ${lng.toFixed(5)}`;
+    }
+
+    function normLng(v) {
+      let n = Number(v);
+      if (!Number.isFinite(n)) return 0;
+      while (n > 180) n -= 360;
+      while (n < -180) n += 360;
+      return n;
+    }
+
+    function isValidBbox(b) {
+      if (!b || typeof b !== "object") return false;
+      const w = Number(b.west), s = Number(b.south), e = Number(b.east), n = Number(b.north);
+      return [w, s, e, n].every(Number.isFinite) && w < e && s < n;
+    }
+
+    function altitudeFromBbox(b) {
+      const latSpan = Math.abs(b.north - b.south);
+      const lngSpan = Math.abs(b.east - b.west);
+      const d = Math.max(latSpan, lngSpan);
+      return Math.min(ALT_MAX, Math.max(0.75, 0.62 + d * 0.24));
+    }
+
+    function makeSolidTexture(hex) {
+      const c = document.createElement("canvas");
+      c.width = 2;
+      c.height = 2;
+      const x = c.getContext("2d");
+      x.fillStyle = hex;
+      x.fillRect(0, 0, 2, 2);
+      return c.toDataURL("image/png");
+    }
+
+    function applyWireframePolys() {
+      if (!globe) return;
+      const t = _themeForState();
+      const pulse = 0.82 + 0.18 * Math.sin(wirePulse);
+      globe
+        .polygonsData(wirePolys)
+        .polygonCapColor(() => "rgba(0,0,0,0)")
+        .polygonSideColor(() => "rgba(0,0,0,0)")
+        .polygonStrokeColor((f) =>
+          f?.properties?._wireLayer === "state"
+            ? t.stateStroke.replace(/[\d\.]+\)$/g, `${(0.90 * pulse).toFixed(3)})`)
+            : t.countryStroke.replace(/[\d\.]+\)$/g, `${(0.50 * pulse).toFixed(3)})`)
+        )
+        .polygonAltitude((f) => (f?.properties?._wireLayer === "state" ? 0.010 : 0.004))
+        .polygonsTransitionDuration(0);
+    }
+
+    async function loadWireBoundaries() {
+      const polys = [];
+      const [worldRes, statesRes] = await Promise.allSettled([
+        fetch(WORLD_URL),
+        fetch(US_STATES_URL),
+      ]);
+
+      if (worldRes.status === "fulfilled" && worldRes.value.ok) {
+        const j = await worldRes.value.json();
+        if (Array.isArray(j?.features)) {
+          for (const f of j.features) {
+            f.properties = { ...(f.properties || {}), _wireLayer: "country" };
+            polys.push(f);
+          }
+        }
+      }
+      if (statesRes.status === "fulfilled" && statesRes.value.ok) {
+        const j = await statesRes.value.json();
+        if (Array.isArray(j?.features)) {
+          for (const f of j.features) {
+            f.properties = { ...(f.properties || {}), _wireLayer: "state" };
+            polys.push(f);
+          }
+        }
+      }
+      wirePolys = polys;
+      applyWireframePolys();
+    }
+
+    function setTargetHighlight(lat, lng) {
+      if (!globe) return;
+      const t = _themeForState();
+      globe
+        .pointsData([{ lat, lng }])
+        .pointColor(() => t.point)
+        .pointRadius(0.74)
+        .pointAltitude(0.03)
+        .pointResolution(20);
+    }
+
+    function applyArcAndRingLayers() {
+      if (!globe) return;
+      const t = _themeForState();
+      globe
+        .arcsData(flightArcs)
+        .arcStartLat("startLat")
+        .arcStartLng("startLng")
+        .arcEndLat("endLat")
+        .arcEndLng("endLng")
+        .arcColor(() => [t.arcFrom, t.arcTo])
+        .arcAltitude((d) => d.altitude || 0.22)
+        .arcStroke(0.85)
+        .arcDashLength(0.55)
+        .arcDashGap(1.2)
+        .arcDashInitialGap((d) => d.gap || 0)
+        .arcDashAnimateTime(1700)
+        .arcsTransitionDuration(0);
+
+      globe
+        .ringsData(ringBlips)
+        .ringLat("lat")
+        .ringLng("lng")
+        .ringColor(() => t.ring)
+        .ringMaxRadius(5.8)
+        .ringPropagationSpeed(3.4)
+        .ringRepeatPeriod(1200)
+        .ringsTransitionDuration(0);
+    }
+
+    function addFlightArc(startLat, startLng, endLat, endLng) {
+      const latA = Number(startLat);
+      const lngA = Number(startLng);
+      const latB = Number(endLat);
+      const lngB = Number(endLng);
+      if (![latA, lngA, latB, lngB].every(Number.isFinite)) return;
+
+      const alt = Math.min(0.36, Math.max(0.11, Math.hypot(latA - latB, lngA - lngB) * 0.0045));
+      flightArcs.unshift({
+        startLat: latA,
+        startLng: lngA,
+        endLat: latB,
+        endLng: lngB,
+        altitude: alt,
+        gap: Math.random() * 1.6,
+      });
+      if (flightArcs.length > 16) flightArcs = flightArcs.slice(0, 16);
+      ringBlips.unshift({ lat: latB, lng: lngB });
+      if (ringBlips.length > 10) ringBlips = ringBlips.slice(0, 10);
+      applyArcAndRingLayers();
+    }
+
+    function tryDisableAutoRotate() {
+      try {
+        const c = globe.controls && globe.controls();
+        if (c) c.autoRotate = false;
+      } catch {}
+    }
+
+    function currentPov() {
+      try {
+        const p = globe.pointOfView();
+        if (p && typeof p.lat === "number") return p;
+      } catch {}
+      return { lat: lastLat, lng: lastLng, altitude: 1.2 };
+    }
+
+    function zoomBy(f) {
+      const p = currentPov();
+      const a = Math.max(ALT_MIN, Math.min(ALT_MAX, (p.altitude || 1.2) * f));
+      globe.pointOfView({ lat: p.lat, lng: p.lng, altitude: a }, 420);
+    }
+
+    function initGlobe() {
+      globe = Globe()(document.getElementById("globeViz"))
+        .globeImageUrl(makeSolidTexture("#081322"))
+        .bumpImageUrl(makeSolidTexture("#081322"))
+        .backgroundColor("rgb(2,4,12)")
+        .showAtmosphere(true)
+        .atmosphereColor("#36e5ff")
+        .atmosphereAltitude(0.17)
+        .showGraticules(true)
+        .graticulesColor(() => "rgba(0,220,245,0.18)");
+
+      globe.pointOfView({ lat: 22, lng: -40, altitude: 2.7 }, 0);
+      ready = true;
+      applyStateVisuals();
+      applyWireframePolys();
+      applyArcAndRingLayers();
+      loadWireBoundaries().catch((e) => console.warn("wireframe load", e));
+
+      if (pendingFly) {
+        const p = pendingFly;
+        pendingFly = null;
+        mangoFlyTo(p.lat, p.lng, p.label, true, p.bbox || null);
+      } else {
+        maybeFlyFromUrlQuery();
+      }
+      setTimeout(tryDisableAutoRotate, 450);
+    }
+
+    function parseUrlBbox(params) {
+      const w = params.get("west"), s = params.get("south"), e = params.get("east"), n = params.get("north");
+      if (w === null || s === null || e === null || n === null) return null;
+      const b = { west: parseFloat(w), south: parseFloat(s), east: parseFloat(e), north: parseFloat(n) };
+      return isValidBbox(b) ? b : null;
+    }
+
+    function maybeFlyFromUrlQuery() {
+      const p = new URLSearchParams(location.search);
+      const la = parseFloat(p.get("lat") || "");
+      const ln = parseFloat(p.get("lng") || "");
+      if (!Number.isFinite(la) || !Number.isFinite(ln)) return;
+      let lab = p.get("label") || "";
+      try { lab = decodeURIComponent(lab.replace(/\+/g, " ")); } catch {}
+      mangoFlyTo(la, ln, lab, true, parseUrlBbox(p));
+    }
+
+    async function nominatimSearch(query) {
+      const url =
+        "https://nominatim.openstreetmap.org/search?q=" +
+        encodeURIComponent(query) +
+        "&format=json&limit=1";
+      const r = await fetch(url, {
+        headers: { Accept: "application/json", "Accept-Language": "en" },
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const rows = await r.json();
+      if (!rows?.length) return null;
+      const row = rows[0];
+      let bbox = null;
+      if (Array.isArray(row.boundingbox) && row.boundingbox.length >= 4) {
+        const b = {
+          south: parseFloat(row.boundingbox[0]),
+          north: parseFloat(row.boundingbox[1]),
+          west: parseFloat(row.boundingbox[2]),
+          east: parseFloat(row.boundingbox[3]),
+        };
+        if (isValidBbox(b)) bbox = b;
+      }
+      return {
+        lat: parseFloat(row.lat),
+        lng: parseFloat(row.lon),
+        label: (row.display_name || query).slice(0, 180),
+        bbox,
+      };
+    }
+
+    async function doSearch() {
+      const q = (document.getElementById("q").value || "").trim();
+      if (!q) return;
+      setStatus("Querying...");
+      try {
+        const hit = await nominatimSearch(q);
+        if (!hit) {
+          setStatus("No map match.");
+          return;
+        }
+        mangoFlyTo(hit.lat, hit.lng, hit.label, true, hit.bbox);
+      } catch (e) {
+        setStatus("Search failed.");
+      }
+    }
+
+    function mangoFlyTo(lat, lng, label, skipIntro, bbox) {
+      const la = Number(lat);
+      const ln = normLng(lng);
+      if (!Number.isFinite(la) || !Number.isFinite(ln)) return;
+
+      mangoSetGlobeVisible(true);
+      document.getElementById("placeLabel").textContent = label || "Location";
+      setStatus("Targeting: " + (label || "Location"));
+      setCoordsText(la, ln);
+      lastLat = la;
+      lastLng = ln;
+
+      if (!ready || !globe) {
+        pendingFly = { lat: la, lng: ln, label: label || "Location", bbox: bbox || null };
+        return;
+      }
+
+      addFlightArc(lastLat, lastLng, la, ln);
+      setTargetHighlight(la, ln);
+      const endAlt =
+        bbox && isValidBbox(bbox)
+          ? altitudeFromBbox(bbox)
+          : 1.15;
+
+      if (skipIntro) {
+        globe.pointOfView({ lat: la, lng: ln, altitude: endAlt }, 2600);
+        setTimeout(tryDisableAutoRotate, 2800);
+        return;
+      }
+
+      globe.pointOfView({ lat: 14, lng: -30, altitude: 4.0 }, 0);
+      setTimeout(() => globe.pointOfView({ lat: 8, lng: 110, altitude: 3.7 }, 1900), 300);
+      setTimeout(() => globe.pointOfView({ lat: la, lng: ln, altitude: endAlt }, 3400), 2300);
+      setTimeout(tryDisableAutoRotate, 6400);
+    }
+
+    initGlobe();
+    mangoSetGlobeVisible(false);
+    mangoSetAiState("listening");
+
+    setInterval(() => {
+      wirePulse += aiState === "speaking" ? 0.42 : aiState === "thinking" ? 0.25 : 0.14;
+      if (globeVisible) {
+        applyWireframePolys();
+      }
+    }, 95);
+
+    document.getElementById("zoomIn").addEventListener("click", () => zoomBy(0.68));
+    document.getElementById("zoomOut").addEventListener("click", () => zoomBy(1.45));
+    document.getElementById("resetView").addEventListener("click", () => {
+      globe.pointOfView({ lat: 22, lng: -40, altitude: 2.7 }, 800);
+      setStatus("View reset.");
+    });
+    document.getElementById("openOsm").addEventListener("click", () => {
+      const p = currentPov();
+      const z = Math.max(4, Math.min(16, Math.round(8 - Math.log2(Math.max(p.altitude || 1, 0.06)))));
+      window.open(`https://www.openstreetmap.org/#map=${z}/${p.lat}/${p.lng}`, "_blank");
+    });
+    document.getElementById("searchBtn").addEventListener("click", doSearch);
+    document.getElementById("q").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") doSearch();
+    });
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      const txt = `${lastLat.toFixed(6)}, ${lastLng.toFixed(6)}`;
+      try {
+        await navigator.clipboard.writeText(txt);
+        setStatus("Copied: " + txt);
+      } catch {
+        setStatus("Copy failed.");
+      }
+    });
+    document.getElementById("btnQuit").addEventListener("click", () => {
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.quit) {
+        window.pywebview.api.quit();
+      }
+    });
+
+    window.mangoFlyTo = mangoFlyTo;
+    window.mangoSetStatus = setStatus;
+    window.mangoSetGlobeVisible = mangoSetGlobeVisible;
+    window.mangoSetAiState = mangoSetAiState;
+  </script>
+</body>
+</html>

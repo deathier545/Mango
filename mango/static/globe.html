@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mango Globe</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #050508; overflow: hidden;
+      font-family: Segoe UI, system-ui, sans-serif; }
+    #globeViz { width: 100vw; height: 100vh; }
+    #hint {
+      position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+      font-size: 12px; color: rgba(255,255,255,0.55); text-shadow: 0 1px 4px #000;
+      pointer-events: none; z-index: 3;
+    }
+    #toolbar {
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 6px; z-index: 4; padding: 6px 10px; border-radius: 10px;
+      background: rgba(12,12,20,0.82); border: 1px solid #35354a;
+    }
+    #toolbar button {
+      border: 1px solid #454560; background: #1e1e2e; color: #e8e8f8;
+      border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+    }
+    #cap {
+      position: fixed; left: 12px; bottom: 12px; color: #e8e8f0; font-size: 13px;
+      text-shadow: 0 1px 4px #000; pointer-events: none; max-width: 70vw; z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <div id="hint">Drag to rotate &middot; Scroll wheel to zoom</div>
+  <div id="globeViz"></div>
+  <div id="toolbar">
+    <button type="button" id="zoomIn">+ Zoom</button>
+    <button type="button" id="zoomOut">&minus; Zoom</button>
+    <button type="button" id="toggleTex">Blue / Dark</button>
+    <button type="button" id="openOsm">2D map</button>
+  </div>
+  <div id="cap"></div>
+  <script src="https://unpkg.com/globe.gl"></script>
+  <script>
+    const TEX_BLUE = "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg";
+    const TEX_DARK = "https://unpkg.com/three-globe/example/img/earth-night.jpg";
+    const BUMP = "https://unpkg.com/three-globe/example/img/earth-topology.png";
+
+    const params = new URLSearchParams(location.search);
+    const lat = parseFloat(params.get("lat") || "20");
+    const lng = parseFloat(params.get("lng") || "0");
+    const label = params.get("label") || "Location";
+
+    const cap = document.getElementById("cap");
+    cap.textContent = label;
+
+    const el = document.getElementById("globeViz");
+    const globe = Globe()(el)
+      .globeImageUrl(TEX_BLUE)
+      .bumpImageUrl(BUMP)
+      .backgroundColor("rgba(5,5,8,1)");
+
+    let darkEarth = false;
+    const ALT_MIN = 0.035;
+    const ALT_MAX = 5.5;
+
+    function tryDisableAutoRotate() {
+      try {
+        const c = globe.controls && globe.controls();
+        if (c) c.autoRotate = false;
+      } catch (e) { /* ignore */ }
+    }
+
+    function currentPov() {
+      try {
+        const p = globe.pointOfView();
+        if (p && typeof p.lat === "number") return p;
+      } catch (e) { /* ignore */ }
+      return { lat, lng, altitude: 1.2 };
+    }
+
+    function zoomBy(factor) {
+      tryDisableAutoRotate();
+      const p = currentPov();
+      let a = (typeof p.altitude === "number") ? p.altitude : 1.2;
+      a = Math.max(ALT_MIN, Math.min(ALT_MAX, a * factor));
+      globe.pointOfView({ lat: p.lat, lng: p.lng, altitude: a }, 420);
+    }
+
+    document.getElementById("zoomIn").addEventListener("click", () => zoomBy(0.62));
+    document.getElementById("zoomOut").addEventListener("click", () => zoomBy(1.55));
+    document.getElementById("toggleTex").addEventListener("click", () => {
+      darkEarth = !darkEarth;
+      globe.globeImageUrl(darkEarth ? TEX_DARK : TEX_BLUE);
+    });
+    document.getElementById("openOsm").addEventListener("click", () => {
+      const p = currentPov();
+      const z = Math.round(Math.log2(400 / Math.max(p.altitude || 1, 0.08)));
+      const zm = Math.max(3, Math.min(18, z));
+      window.open("https://www.openstreetmap.org/#map=" + zm + "/" + p.lat + "/" + p.lng, "_blank");
+    });
+
+    const startAlt = 4.2;
+    const endAlt = 1.15;
+    globe.pointOfView({ lat: 15, lng: -40, altitude: startAlt }, 0);
+
+    setTimeout(() => {
+      globe.pointOfView({ lat: 10, lng: 120, altitude: startAlt * 0.95 }, 2200);
+    }, 400);
+
+    setTimeout(() => {
+      globe.pointOfView({ lat, lng, altitude: endAlt }, 3800);
+    }, 2800);
+
+    setTimeout(tryDisableAutoRotate, 6500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-ui, Inter, 'Segoe UI', Roboto, sans-serif);
+  background: var(--ui-bg-0, #0b1020);
+  color: var(--ui-text, #dbe4ff);
+  -webkit-font-smoothing: antialiased;
+}

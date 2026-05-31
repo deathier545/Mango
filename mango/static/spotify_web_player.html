@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Spotify web playback (localhost)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; background: #1a1a1a; color: #eee; padding: 16px; max-width: 42rem; }
+    h1 { font-size: 1.15rem; font-weight: 600; }
+    .note { font-size: 0.9rem; opacity: 0.9; line-height: 1.45; }
+    #unlock {
+      margin-top: 12px; padding: 10px 16px; font-size: 1rem; cursor: pointer;
+      background: #1db954; color: #111; border: none; border-radius: 6px; font-weight: 600;
+    }
+    #unlock:hover { filter: brightness(1.08); }
+    #log { font-size: 12px; opacity: 0.8; white-space: pre-wrap; margin-top: 14px; font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Spotify web playback (browser tab)</h1>
+  <p class="note">
+    This page is only a <strong>local helper</strong> so your voice assistant can use Spotify’s Web Playback SDK.
+    It is <strong>not</strong> a second copy of the assistant — keep this tab open while you listen.
+  </p>
+  <p class="note">
+    <strong>No sound?</strong> Chrome and Edge often block audio until you interact with this page.
+    Click <strong>Enable audio</strong> once. Music comes from the <strong>browser’s</strong> Windows output device
+    (which can differ from your headset if Windows routes apps separately).
+  </p>
+  <button type="button" id="unlock">Enable audio</button>
+  <div id="log"></div>
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg) {
+      logEl.textContent += msg + '\n';
+    }
+    let player = null;
+
+    async function fetchToken() {
+      const r = await fetch('/api/token');
+      const j = await r.json();
+      if (!j.access_token) throw new Error(j.error || 'no access_token');
+      return j.access_token;
+    }
+
+    async function postDevice(deviceId) {
+      await fetch('/api/device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: deviceId }),
+      });
+    }
+
+    document.getElementById('unlock').addEventListener('click', async () => {
+      if (!player) {
+        log('Player not ready yet — wait until you see “Player ready” below, then click again.');
+        return;
+      }
+      try {
+        if (typeof player.activateElement === 'function') {
+          await player.activateElement();
+          log('Audio unlocked. Ask your assistant to play again if the track was silent before.');
+        } else {
+          log('This SDK build has no activateElement(); try focusing this tab and use the browser volume.');
+        }
+      } catch (e) {
+        log('Enable audio failed: ' + e);
+      }
+    });
+
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      player = new Spotify.Player({
+        name: 'Mango host web player',
+        getOAuthToken: (cb) => {
+          fetchToken().then((t) => cb(t)).catch((e) => {
+            log('Token error: ' + e);
+            cb('');
+          });
+        },
+        volume: 0.9,
+      });
+      player.addListener('initialization_error', ({ message }) => log('Init error: ' + message));
+      player.addListener('authentication_error', ({ message }) => log('Auth error: ' + message));
+      player.addListener('account_error', ({ message }) => log('Account error: ' + message));
+      player.addListener('playback_error', ({ message }) => log('Playback error: ' + message));
+      player.addListener('autoplay_failed', () => {
+        log('Browser blocked autoplay — click “Enable audio” above, then play from the assistant again.');
+      });
+      player.addListener('ready', async ({ device_id }) => {
+        log('Player ready, device_id=' + device_id);
+        try {
+          await postDevice(device_id);
+        } catch (e) {
+          log('postDevice failed: ' + e);
+        }
+      });
+      player.connect().then((ok) => {
+        if (!ok) log('connect() returned false');
+      }).catch((e) => log('connect error: ' + e));
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+"tests/*.py" = ["E402"]
+"mango/voice_loop.py" = ["E402"]
+"mango/main.py" = ["E402"]

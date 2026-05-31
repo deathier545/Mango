@@ -1,0 +1,37 @@
+:root {
+  --ui-bg-0: #02050b;
+  --ui-bg-1: #040a14;
+  --ui-bg-2: #071222;
+  --ui-panel: rgba(7, 15, 30, 0.93);
+  --ui-border: #2a5a88;
+  --ui-border-strong: #3d7ab0;
+  --ui-text: #dbe4ff;
+  --ui-text-muted: #8eaecb;
+  --ui-accent: #53d8ff;
+  --ui-accent-soft: rgba(83, 216, 255, 0.25);
+  --ui-accent-strong: rgba(83, 216, 255, 0.55);
+  --ui-success: #4ade80;
+  --ui-danger: #f87171;
+  --ui-warning: #fbbf24;
+  --ui-radius-sm: 8px;
+  --ui-radius-md: 12px;
+  --ui-radius-lg: 16px;
+  --ui-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  --ui-transition: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --chat-max-width: 760px;
+  --bottom-nav-reserve: 108px;
+  --font-ui: Inter, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (min-width: 900px) {
+  :root {
+    /* Tab hints visible — slightly taller bottom nav */
+    --bottom-nav-reserve: 120px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ui-transition: 0ms;
+  }
+}

@@ -1,0 +1,13 @@
+Your Colab settings (saved for reference)
+=========================================
+Wake phrase: mango
+
+number_of_examples:        30000  →  n_samples: 30000
+number_of_training_steps:    20000  →  steps: 20000
+false_activation_penalty:    1500   →  max_negative_weight: 1500
+
+Local scripts use: wake word/config/mango.yml
+
+After training, point Mango .env at:
+  MANGO_OWW_MODELS=<path>\wake word\output\mango\mango.onnx
+  MANGO_WAKE_PHRASE=mango

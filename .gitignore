@@ -1,0 +1,29 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+logs/
+*.log
+
+# Local / IDE
+.mango-app-settings.json
+
+# Electron app
+mango-app/node_modules/
+mango-app/dist/
+mango-app/.env.development.local
+
+# Wake-word training sandbox (separate venv + vendor)
+wake word/.venv-train/
+wake word/vendor/
+wake word/**/__pycache__/
+wake word/output/
+wake word/data/
+wake word/logs/
+wake word/piper-sample-generator/
+
+# Optional sibling project (keep out of git if copied locally)
+OpenJarvis/
