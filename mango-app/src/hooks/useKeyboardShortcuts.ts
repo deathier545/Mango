@@ -4,10 +4,8 @@ import type { AppView } from '../types/ui'
 const VIEW_BY_DIGIT: Record<string, AppView> = {
   '1': 'mango',
   '2': 'chat',
-  '3': 'conversation',
-  '4': 'metrics',
-  '5': 'smart',
-  '6': 'settings',
+  '3': 'smart',
+  '4': 'diagnostics',
 }
 
 export function useKeyboardShortcuts(
@@ -17,13 +15,20 @@ export function useKeyboardShortcuts(
   onCommandPalette?: () => void,
   onMangoView?: () => void,
   onSaveSettings?: () => void,
+  settingsOpen?: boolean,
+  onOpenSettings?: () => void,
 ) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        if ((e.key === 's' || e.key === 'S') && activeView === 'settings' && onSaveSettings) {
+        if ((e.key === 's' || e.key === 'S') && settingsOpen && onSaveSettings) {
           e.preventDefault()
           onSaveSettings()
+          return
+        }
+        if (e.key === ',' && onOpenSettings) {
+          e.preventDefault()
+          onOpenSettings()
           return
         }
         if ((e.key === 'k' || e.key === 'K') && onCommandPalette) {
@@ -46,5 +51,5 @@ export function useKeyboardShortcuts(
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onView, onSendChat, activeView, onCommandPalette, onMangoView, onSaveSettings])
+  }, [onView, onSendChat, activeView, onCommandPalette, onMangoView, onSaveSettings, settingsOpen, onOpenSettings])
 }

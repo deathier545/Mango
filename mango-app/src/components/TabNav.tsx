@@ -3,15 +3,8 @@ import type { AppView } from '../types/ui'
 const TABS: { id: AppView; label: string; hint: string; shortcut: string }[] = [
   { id: 'mango', label: 'Mango', hint: 'Voice orb & map', shortcut: 'Ctrl+1' },
   { id: 'chat', label: 'Chat', hint: 'Type messages to Mango', shortcut: 'Ctrl+2' },
-  {
-    id: 'conversation',
-    label: 'Voice log',
-    hint: 'Wake/PTT transcript & system logs',
-    shortcut: 'Ctrl+3',
-  },
-  { id: 'metrics', label: 'Metrics', hint: 'Latency, tokens, tools', shortcut: 'Ctrl+4' },
-  { id: 'smart', label: 'Smart', hint: 'Memory, routines, timeline', shortcut: 'Ctrl+5' },
-  { id: 'settings', label: 'Settings', hint: 'Preferences & diagnostics', shortcut: 'Ctrl+6' },
+  { id: 'smart', label: 'Smart', hint: 'Memory, routines, timeline', shortcut: 'Ctrl+3' },
+  { id: 'diagnostics', label: 'Diagnostics', hint: 'Voice log, metrics, tools', shortcut: 'Ctrl+4' },
 ]
 
 type TabNavProps = {

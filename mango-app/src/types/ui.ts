@@ -18,7 +18,9 @@ export type MangoSettings = {
   completionTokenRatePer1k: number
 }
 
-export type AppView = 'mango' | 'chat' | 'conversation' | 'metrics' | 'smart' | 'settings'
+export type AppView = 'mango' | 'chat' | 'smart' | 'diagnostics'
+
+export type DiagSubView = 'voice' | 'metrics'
 
 export type MemoryCard = {
   id: string

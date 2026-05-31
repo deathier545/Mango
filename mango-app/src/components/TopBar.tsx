@@ -10,6 +10,7 @@ type TopBarProps = {
   onStart: () => void
   onStop: () => void
   onRestart: () => void
+  onOpenSettings?: () => void
 }
 
 export function TopBar({
@@ -21,6 +22,7 @@ export function TopBar({
   onStart,
   onStop,
   onRestart,
+  onOpenSettings,
 }: TopBarProps) {
   const stateLabel = assistantStateLabel(orbState, status.running)
 
@@ -63,6 +65,11 @@ export function TopBar({
         </span>
       </div>
       <div className="controls topbarControls">
+        {onOpenSettings ? (
+          <button type="button" className="btnSecondary" onClick={onOpenSettings} title="Settings (Ctrl+,)">
+            Settings
+          </button>
+        ) : null}
         <button type="button" className="btnPrimary" onClick={onStart} disabled={status.running || startPending}>
           {startPending ? 'Starting…' : 'Start'}
         </button>

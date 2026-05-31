@@ -409,6 +409,9 @@ button:disabled {
   visibility: hidden;
   pointer-events: none;
   transform: translateY(6px);
+  z-index: 0;
+  overflow: hidden;
+  contain: layout paint;
   transition:
     opacity var(--ui-transition),
     transform var(--ui-transition);
@@ -443,6 +446,7 @@ button:disabled {
   position: absolute;
   inset: 0;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transition: opacity 360ms cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 2;
@@ -450,6 +454,7 @@ button:disabled {
 
 .sceneLayer.sceneVisible {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
   z-index: 3;
 }
@@ -636,13 +641,18 @@ button:disabled {
 }
 
 .legacySphereWrap {
-  width: 380px;
-  height: 380px;
+  width: min(380px, 70vmin, 100%);
+  height: min(380px, 70vmin, 100%);
   display: grid;
   place-items: center;
   position: relative;
   filter: drop-shadow(0 0 18px var(--orb-secondary));
   transition: filter 180ms ease;
+}
+
+.hudScreen.hasQuickBar.hasLiveStrip .legacySphereWrap {
+  width: min(320px, 58vmin, 100%);
+  height: min(320px, 58vmin, 100%);
 }
 
 .orbCanvas {
@@ -1005,7 +1015,8 @@ button:disabled {
 }
 
 .chatComposer textarea {
-  resize: vertical;
+  resize: none;
+  overflow-y: auto;
   min-height: 72px;
   max-height: 180px;
   border-radius: 10px;
@@ -1270,7 +1281,7 @@ button:disabled {
       transparent 12px
     );
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding: 8px;
   z-index: 40;
@@ -1287,11 +1298,16 @@ button:disabled {
   padding: 10px 8px;
   min-height: 58px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .tabLabel {
   font-size: 13px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .tabHint {
@@ -1299,6 +1315,10 @@ button:disabled {
   color: var(--ui-text-muted);
   display: none;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 @media (min-width: 900px) {
@@ -1929,7 +1949,7 @@ button:disabled {
   }
 
   .bottomTabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .toolTimelineSummary {
@@ -1948,20 +1968,11 @@ button:disabled {
     width: min(320px, 100%);
     height: min(320px, 100%);
   }
-
-  .legacySphereWrap {
-    width: 295px;
-    height: 295px;
-  }
 }
 
 @media (max-width: 560px) {
-  :root {
-    --bottom-nav-reserve: 156px;
-  }
-
   .bottomTabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
     padding: 6px;
   }
@@ -2032,4 +2043,77 @@ button:disabled {
     padding: 5px 10px;
     font-size: 12px;
   }
+}
+
+.ghostBtn {
+  background: transparent;
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text-muted);
+  border-radius: var(--ui-radius-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ghostBtn:hover {
+  border-color: var(--ui-accent);
+  color: var(--ui-text);
+}
+
+.settingsOverlay {
+  z-index: 10;
+  background: rgba(4, 10, 20, 0.92);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.settingsOverlayInner {
+  width: min(720px, 100%);
+  max-height: 100%;
+  overflow: auto;
+}
+
+.settingsOverlayHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.settingsOverlayHead h2 {
+  margin: 0;
+}
+
+.diagnosticsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
+}
+
+.diagSubTabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.diagSubTab {
+  border: 1px solid var(--ui-border);
+  background: #0a1d34;
+  color: var(--ui-text-muted);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.diagSubTab.active {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+  color: var(--ui-text);
 }

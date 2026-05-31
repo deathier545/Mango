@@ -19,14 +19,20 @@
   --ui-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   --ui-transition: 220ms cubic-bezier(0.4, 0, 0.2, 1);
   --chat-max-width: 760px;
-  --bottom-nav-reserve: 108px;
+  --bottom-nav-reserve: 92px;
   --font-ui: Inter, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --bottom-nav-reserve: 84px;
+  }
 }
 
 @media (min-width: 900px) {
   :root {
     /* Tab hints visible — slightly taller bottom nav */
-    --bottom-nav-reserve: 120px;
+    --bottom-nav-reserve: 92px;
   }
 }
 
