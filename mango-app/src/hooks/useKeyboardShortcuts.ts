@@ -1,29 +1,28 @@
-import { useEffect } from 'react'
-import type { AppView } from '../types/ui'
+import { useEffect, type RefObject } from 'react'
+import type { AppZone } from '../types/ui'
 
-const VIEW_BY_DIGIT: Record<string, AppView> = {
-  '1': 'mango',
-  '2': 'chat',
-  '3': 'conversation',
-  '4': 'metrics',
-  '5': 'smart',
-  '6': 'settings',
+const ZONE_BY_DIGIT: Record<string, AppZone> = {
+  '1': 'command',
+  '2': 'intelligence',
+  '3': 'diagnostics',
+  '4': 'config',
 }
 
 export function useKeyboardShortcuts(
-  onView: (view: AppView) => void,
+  onZone: (zone: AppZone) => void,
   onSendChat: () => void,
-  activeView: AppView,
+  activeZone: AppZone,
   onCommandPalette?: () => void,
-  onMangoView?: () => void,
-  onSaveSettings?: () => void,
+  onToggleContext?: () => void,
+  onOpenSettings?: () => void,
+  commandInputRef?: RefObject<HTMLTextAreaElement | null>,
 ) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        if ((e.key === 's' || e.key === 'S') && activeView === 'settings' && onSaveSettings) {
+        if ((e.key === ',' || e.key === 's' || e.key === 'S') && onOpenSettings) {
           e.preventDefault()
-          onSaveSettings()
+          onOpenSettings()
           return
         }
         if ((e.key === 'k' || e.key === 'K') && onCommandPalette) {
@@ -31,20 +30,30 @@ export function useKeyboardShortcuts(
           onCommandPalette()
           return
         }
-        const digit = e.key
-        if (digit in VIEW_BY_DIGIT) {
+        if (e.key === '\\' && onToggleContext) {
           e.preventDefault()
-          if (digit === '1' && onMangoView) onMangoView()
-          else onView(VIEW_BY_DIGIT[digit])
+          onToggleContext()
           return
         }
-      }
-      if (activeView === 'chat' && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault()
-        onSendChat()
+        const digit = e.key
+        if (digit in ZONE_BY_DIGIT) {
+          e.preventDefault()
+          onZone(ZONE_BY_DIGIT[digit])
+          return
+        }
+        if (e.key === 'Enter') {
+          const inputFocused =
+            document.activeElement === commandInputRef?.current ||
+            document.activeElement?.classList.contains('commandInput')
+          if (inputFocused) {
+            e.preventDefault()
+            onSendChat()
+          }
+          return
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onView, onSendChat, activeView, onCommandPalette, onMangoView, onSaveSettings])
+  }, [onZone, onSendChat, activeZone, onCommandPalette, onToggleContext, onOpenSettings, commandInputRef])
 }

@@ -8,9 +8,18 @@ type ConversationPanelProps = {
   reply: string
   timeline: TimelineItem[]
   logs: LogEntry[]
+  logsOnly?: boolean
+  voiceOnly?: boolean
 }
 
-export function ConversationPanel({ transcript, reply, timeline, logs }: ConversationPanelProps) {
+export function ConversationPanel({
+  transcript,
+  reply,
+  timeline,
+  logs,
+  logsOnly = false,
+  voiceOnly = false,
+}: ConversationPanelProps) {
   const [logQuery, setLogQuery] = useState('')
   const [newestFirst, setNewestFirst] = useState(true)
   const sorted = useMemo(
@@ -25,7 +34,8 @@ export function ConversationPanel({ transcript, reply, timeline, logs }: Convers
   }, [logs, logQuery])
 
   return (
-    <section className="contentGrid">
+    <section className={logsOnly || voiceOnly ? 'panel' : 'contentGrid'}>
+      {!logsOnly ? (
       <section className="panel">
         <header className="panelHead">
           <div>
@@ -59,6 +69,8 @@ export function ConversationPanel({ transcript, reply, timeline, logs }: Convers
           )}
         </div>
       </section>
+      ) : null}
+      {!voiceOnly ? (
       <section className="panel">
         <header className="panelHead logsHead">
           <div>
@@ -87,6 +99,7 @@ export function ConversationPanel({ transcript, reply, timeline, logs }: Convers
           )}
         </div>
       </section>
+      ) : null}
     </section>
   )
 }
