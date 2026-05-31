@@ -9,7 +9,6 @@ type SettingsPanelProps = {
   onCopyDiagnostics: () => void
   onExportJson: () => void
   onExportCsv: () => void
-  embedded?: boolean
 }
 
 type SpeechPresetId = 'clear' | 'natural' | 'fast'
@@ -62,15 +61,13 @@ export function SettingsPanel({
   onCopyDiagnostics,
   onExportJson,
   onExportCsv,
-  embedded = false,
 }: SettingsPanelProps) {
   const dirty = !settingsEqual(settings, savedSettings)
   const speechPreset = detectSpeechPreset(settings)
 
   return (
-    <section className={embedded ? 'settingsGridEmbedded' : 'contentGrid settingsGrid'}>
+    <section className="contentGrid settingsGrid">
       <section className="panel">
-        {!embedded ? (
         <header className="panelHead">
           <div>
             <h2>Settings</h2>
@@ -83,7 +80,6 @@ export function SettingsPanel({
             </button>
           </div>
         </header>
-        ) : null}
         <div className="settings">
           <h3>Core</h3>
           <label title="Listen for “hey mango” when Mango is running">

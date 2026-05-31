@@ -28,7 +28,7 @@ export function TopBar({
     <header className="topbar">
       <div className="brand">
         <span className="brandDot" />
-        <h1>Mango</h1>
+        <h1>Mango Console</h1>
       </div>
       <div className="status topbarStatus">
         <span className={`dot ${status.running ? 'on' : 'off'}`} />

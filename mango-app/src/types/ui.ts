@@ -18,12 +18,7 @@ export type MangoSettings = {
   completionTokenRatePer1k: number
 }
 
-export type AppZone = 'command' | 'intelligence' | 'diagnostics' | 'config'
-
-/** @deprecated use AppZone */
-export type AppView = AppZone
-
-export type DiagSubView = 'metrics' | 'voice' | 'system'
+export type AppView = 'mango' | 'chat' | 'conversation' | 'metrics' | 'smart' | 'settings'
 
 export type MemoryCard = {
   id: string

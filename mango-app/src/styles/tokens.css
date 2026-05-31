@@ -1,61 +1,33 @@
 :root {
-  /* Surfaces — charcoal + glass */
-  --ui-bg-0: #050508;
-  --ui-bg-1: #0a0a12;
-  --ui-bg-2: #12121c;
-  --ui-panel: rgba(255, 255, 255, 0.06);
-  --ui-panel-solid: rgba(12, 14, 22, 0.92);
-  --ui-border: rgba(255, 255, 255, 0.1);
-  --ui-border-strong: rgba(139, 92, 246, 0.45);
-
-  /* Text */
-  --ui-text: rgba(255, 255, 255, 0.92);
-  --ui-text-muted: rgba(255, 255, 255, 0.55);
-  --ui-text-faint: rgba(255, 255, 255, 0.35);
-
-  /* Dual accent: violet intelligence + mango warmth */
-  --ui-accent: #8b5cf6;
-  --ui-accent-soft: rgba(139, 92, 246, 0.22);
-  --ui-accent-strong: rgba(139, 92, 246, 0.5);
-  --ui-mango: #ff9f43;
-  --ui-mango-soft: rgba(255, 159, 67, 0.2);
-  --ui-cyan: #00e5ff;
-  --ui-cyan-soft: rgba(0, 229, 255, 0.12);
-
-  /* Status */
-  --ui-success: #34d399;
-  --ui-danger: #ff6b6b;
+  --ui-bg-0: #02050b;
+  --ui-bg-1: #040a14;
+  --ui-bg-2: #071222;
+  --ui-panel: rgba(7, 15, 30, 0.93);
+  --ui-border: #2a5a88;
+  --ui-border-strong: #3d7ab0;
+  --ui-text: #dbe4ff;
+  --ui-text-muted: #8eaecb;
+  --ui-accent: #53d8ff;
+  --ui-accent-soft: rgba(83, 216, 255, 0.25);
+  --ui-accent-strong: rgba(83, 216, 255, 0.55);
+  --ui-success: #4ade80;
+  --ui-danger: #f87171;
   --ui-warning: #fbbf24;
-
-  /* Layout */
-  --nav-rail-w: 72px;
-  --orb-dock-w: 240px;
-  --orb-dock-mini-w: 80px;
-  --context-rail-w: 320px;
-  --header-h: 52px;
-  --telemetry-h: 30px;
-  --command-bar-h: 68px;
-  --chat-max-width: 880px;
-  --bottom-nav-reserve: 0px;
-
-  /* Glass */
-  --glass-blur: 20px;
-  --glass-radius-sm: 10px;
-  --glass-radius-md: 14px;
-  --glass-radius-lg: 20px;
-  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
-
-  /* Typography */
-  --font-ui: Inter, 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Cascadia Code', monospace;
-  --font-display: Rajdhani, var(--font-ui);
-
   --ui-radius-sm: 8px;
   --ui-radius-md: 12px;
   --ui-radius-lg: 16px;
-  --ui-shadow: var(--glass-shadow);
+  --ui-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   --ui-transition: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --chat-max-width: 760px;
+  --bottom-nav-reserve: 108px;
+  --font-ui: Inter, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (min-width: 900px) {
+  :root {
+    /* Tab hints visible — slightly taller bottom nav */
+    --bottom-nav-reserve: 120px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

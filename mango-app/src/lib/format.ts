@@ -32,12 +32,6 @@ export function assistantStateLabel(state: string, running: boolean): string {
   return running ? STATE_LABELS.listening : STATE_LABELS.idle
 }
 
-export function formatLatency(seconds: number | null | undefined): string {
-  if (seconds == null || Number.isNaN(seconds)) return '—'
-  if (seconds < 1) return `${Math.round(seconds * 1000)}ms`
-  return `${seconds.toFixed(2)}s`
-}
-
 export function orbCaption(state: OrbState, running: boolean): string {
   if (!running) return 'Voice offline — press Start to enable wake word and push-to-talk.'
   switch (state) {
