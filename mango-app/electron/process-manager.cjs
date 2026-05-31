@@ -88,6 +88,9 @@ function createProcessManager({
       MANGO_INTERRUPT_PROFILE: INTERRUPT_PROFILES.has(interruptProfile) ? interruptProfile : "normal",
       MANGO_HUD: "0",
       MANGO_JARVIS_HUD: "0",
+      MANGO_SDL_AUDIODRIVER:
+        String(process.env.MANGO_SDL_AUDIODRIVER || "").trim() ||
+        (process.platform === "win32" ? "directsound" : ""),
       GROQ_MODEL: cfg.groqModel || defaultSettings.groqModel,
     };
   }
@@ -412,8 +415,10 @@ function createProcessManager({
   function stopDuoChat() {
     if (!duoProc || !isProcessAlive(duoProc)) {
       duoProc = null;
+      pushLog("system", "No running Duo conversation to stop.");
       return { stopped: false };
     }
+    pushLog("system", "Stopping Duo conversation.");
     if (typeof duoProc._duoCancelled === "function") {
       duoProc._duoCancelled();
     }

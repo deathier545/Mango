@@ -4,12 +4,23 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+# Load .env and SDL driver before pygame/SDL initializes (via mango.audio import).
+_ENV_BOOT = Path(__file__).resolve().parent.parent / ".env"
+if _ENV_BOOT.is_file():
+    load_dotenv(dotenv_path=_ENV_BOOT, override=False, encoding="utf-8-sig")
+
+if sys.platform == "win32":
+    _sdl = (os.getenv("MANGO_SDL_AUDIODRIVER") or "directsound").strip() or "directsound"
+    os.environ.setdefault("SDL_AUDIODRIVER", _sdl)
+
 from groq import BadRequestError
 
 from mango.audio import init_voice_mixer
@@ -75,9 +86,9 @@ def _llm_reply(llm: GroqLLM | OllamaLLM, messages: list[dict[str, str]]) -> str:
     return _clean_line(raw)
 
 
-def _speak_line(cfg: Config, *, voice: str, text: str, speaker: str) -> None:
+def _speak_line(cfg: Config, *, voice: str, text: str, speaker: str) -> bool:
     if not text.strip():
-        return
+        return True
     init_voice_mixer()
     tts = EdgeTTS(
         voice=voice,
@@ -85,17 +96,28 @@ def _speak_line(cfg: Config, *, voice: str, text: str, speaker: str) -> None:
         pitch=cfg.edge_pitch,
         volume=cfg.edge_volume,
     )
-
-    def _on_start() -> None:
-        _emit_phase(speaker, "speaking", text)
-
-    tts.speak(
-        text,
-        interrupt_check=None,
-        streaming=cfg.streaming_tts,
-        hud_level_out=None,
-        on_playback_start=_on_start,
-    )
+    # Show transcript/orb immediately; audio may start slightly later.
+    _emit_phase(speaker, "speaking", text)
+    try:
+        tts.speak(
+            text,
+            interrupt_check=None,
+            streaming=cfg.streaming_tts,
+            hud_level_out=None,
+            on_playback_start=None,
+        )
+        return True
+    except Exception:
+        logger.exception("Duo TTS failed for %s", speaker)
+        emit_desktop_event(
+            {
+                "type": "duo_phase",
+                "speaker": speaker,
+                "phase": "tts_error",
+                "text": "Voice playback failed — check logs or try text-only mode.",
+            }
+        )
+        return False
 
 
 def _announce_line(*, speaker: str, text: str, speak: bool, cfg: Config, voice: str) -> None:
@@ -108,9 +130,6 @@ def _announce_line(*, speaker: str, text: str, speak: bool, cfg: Config, voice: 
 
 
 def main() -> None:
-    env_boot = Path(__file__).resolve().parent.parent / ".env"
-    if env_boot.is_file():
-        load_dotenv(dotenv_path=env_boot, override=False, encoding="utf-8-sig")
     setup_logging()
     lines: list[dict[str, str]] = []
     try:

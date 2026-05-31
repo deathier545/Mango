@@ -2214,13 +2214,14 @@ button:disabled {
 }
 
 .hudScreen.duoModeOpen {
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 
 .hudScreen.duoModeOpen .hudSceneStack {
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
   align-content: start;
+  padding: 48px 8px 16px;
 }
 
 .hudScreen.duoModeOpen .orbScene {
@@ -2238,6 +2239,43 @@ button:disabled {
   gap: 14px;
   padding: 8px 4px 16px;
   box-sizing: border-box;
+}
+
+.duoHeader {
+  width: min(720px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.duoHeader .eyebrow {
+  margin: 0 0 2px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+}
+
+.duoHeader h2 {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 30px);
+}
+
+.duoStatus {
+  flex-shrink: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--ui-text-muted);
+  background: rgba(6, 16, 30, 0.7);
+}
+
+.duoStatus.running {
+  border-color: rgba(255, 184, 77, 0.55);
+  color: #ffcc7a;
+  box-shadow: 0 0 18px rgba(255, 184, 77, 0.16);
 }
 
 .duoFlowHint {
@@ -2291,6 +2329,25 @@ button:disabled {
   align-items: center;
   gap: 6px;
   min-width: 0;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.duoOrbUnit.state-speaking {
+  transform: translateY(-4px) scale(1.02);
+}
+
+.duoOrbUnit.state-speaking .duoOrbLabel {
+  color: var(--ui-text);
+}
+
+.duoOrbUnit-amber.state-speaking .duoOrbLabel {
+  color: #ffcc7a;
+}
+
+.duoOrbUnit-amber.state-speaking .duoSphereWrap {
+  filter:
+    drop-shadow(0 0 24px rgba(255, 184, 77, 0.6))
+    drop-shadow(0 0 46px rgba(255, 120, 30, 0.25));
 }
 
 .duoOrbLabel {
@@ -2306,8 +2363,8 @@ button:disabled {
 }
 
 .duoSphereWrap {
-  width: 260px;
-  height: 260px;
+  width: clamp(170px, 23vw, 260px);
+  height: clamp(170px, 23vw, 260px);
 }
 
 .duoSphereWrap-amber {
@@ -2350,19 +2407,47 @@ button:disabled {
   padding: 10px 12px;
   font-size: 13px;
   line-height: 1.45;
+  display: grid;
+  gap: 8px;
+}
+
+.duoLine {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.duoLine-mango {
+  background: rgba(12, 28, 50, 0.72);
+}
+
+.duoLine-amber {
+  background: rgba(70, 39, 9, 0.42);
+  border: 1px solid rgba(255, 184, 77, 0.18);
+}
+
+.duoEmpty {
+  margin: 0;
+  color: var(--ui-text-muted);
+  text-align: center;
+  font-style: italic;
 }
 
 .duoTranscript p {
-  margin: 0 0 8px;
+  margin: 0;
 }
 
 .liveLabelAmber {
   color: #ffb84d;
 }
 
-@media (max-width: 700px) {
+@media (max-height: 760px) {
   .duoSphereWrap {
-    width: 220px;
-    height: 220px;
+    width: clamp(145px, 20vw, 220px);
+    height: clamp(145px, 20vw, 220px);
+  }
+
+  .duoScene {
+    gap: 10px;
   }
 }

@@ -59,13 +59,21 @@ function loadWorkspaceEnvFile() {
   }
 }
 
-function emitStatus() {
-  if (win && !win.isDestroyed()) {
-    win.webContents.send("mango:event", {
-      type: "status",
-      payload: processManager.getStatus(),
-    });
+function sendToRenderer(payload) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    if (win.webContents.isDestroyed()) return;
+    win.webContents.send("mango:event", payload);
+  } catch {
+    // Renderer may be mid-disposal after a GPU/network crash.
   }
+}
+
+function emitStatus() {
+  sendToRenderer({
+    type: "status",
+    payload: processManager.getStatus(),
+  });
 }
 
 function pushLog(kind, line) {
@@ -75,12 +83,10 @@ function pushLog(kind, line) {
   if (recentLogs.length > 500) {
     recentLogs.shift();
   }
-  if (win && !win.isDestroyed()) {
-    win.webContents.send("mango:event", { type: "log", payload: entry });
-  }
+  sendToRenderer({ type: "log", payload: entry });
   const parsed = parseLogLine(safeLine);
-  if (parsed && win && !win.isDestroyed()) {
-    win.webContents.send("mango:event", { type: "parsed", payload: parsed });
+  if (parsed) {
+    sendToRenderer({ type: "parsed", payload: parsed });
   }
 }
 

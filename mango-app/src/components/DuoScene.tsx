@@ -46,7 +46,11 @@ function DuoOrbUnit({
         <canvas ref={orbCanvasRef} className="orbCanvas" aria-hidden="true" />
       </div>
       <p className="duoOrbCaption" aria-live="polite">
-        {orbState === 'thinking' ? 'Thinking…' : orbState === 'speaking' ? 'Speaking' : 'Ready'}
+        {orbState === 'thinking'
+          ? `${label} is thinking…`
+          : orbState === 'speaking'
+            ? `${label} is speaking`
+            : `${label} ready`}
       </p>
     </div>
   )
@@ -105,6 +109,14 @@ export function DuoScene({
 
   return (
     <div className="duoScene">
+      <header className="duoHeader">
+        <div>
+          <p className="eyebrow">Duo Panel</p>
+          <h2>Mango + Amber</h2>
+        </div>
+        <span className={running ? 'duoStatus running' : 'duoStatus'}>{running ? 'Live' : 'Ready'}</span>
+      </header>
+
       <p className="duoFlowHint" role="status">
         Mango opens → Amber responds → repeats for {rounds} round{rounds === 1 ? '' : 's'}
       </p>
@@ -210,18 +222,20 @@ export function DuoScene({
         </div>
       </div>
 
-      {lines.length > 0 ? (
-        <aside className="duoTranscript" aria-label="Duo conversation transcript">
-          {lines.map((line, idx) => (
-            <p key={`${line.speaker}-${idx}`}>
+      <aside className="duoTranscript" aria-label="Duo conversation transcript">
+        {lines.length === 0 ? (
+          <p className="duoEmpty">The transcript will appear here once Mango and Amber start talking.</p>
+        ) : (
+          lines.map((line, idx) => (
+            <p key={`${line.speaker}-${idx}`} className={`duoLine duoLine-${line.speaker}`}>
               <span className={`liveLabel ${line.speaker === 'amber' ? 'liveLabelAmber' : ''}`}>
                 {line.speaker === 'amber' ? 'Amber' : 'Mango'}
               </span>{' '}
               {line.text}
             </p>
-          ))}
-        </aside>
-      ) : null}
+          ))
+        )}
+      </aside>
     </div>
   )
 }
